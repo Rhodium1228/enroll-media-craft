@@ -10,14 +10,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { AlertCircle, MapPin, Loader2 } from "lucide-react";
+import { AlertCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { OpeningHoursEditor } from "../OpeningHoursEditor";
 import { basicDetailsSchema } from "@/lib/validation/branchSchema";
 import { z } from "zod";
-import { Autocomplete, useLoadScript } from "@react-google-maps/api";
-
-const libraries: ("places")[] = ["places"];
 
 interface BasicDetailsStepProps {
   data: {
@@ -38,12 +35,6 @@ export const BasicDetailsStep = ({ data, updateData }: BasicDetailsStepProps) =>
     exists: boolean;
   }>({ loading: false, exists: false });
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
-
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || "",
-    libraries,
-  });
 
   const timezones = [
     "UTC",
@@ -105,20 +96,6 @@ export const BasicDetailsStep = ({ data, updateData }: BasicDetailsStepProps) =>
     }
   };
 
-  const onPlaceChanged = () => {
-    if (autocomplete) {
-      const place = autocomplete.getPlace();
-      if (place.formatted_address) {
-        updateData({ address: place.formatted_address });
-        validateField("address", place.formatted_address);
-      }
-    }
-  };
-
-  const onLoad = (autocompleteInstance: google.maps.places.Autocomplete) => {
-    setAutocomplete(autocompleteInstance);
-  };
-
   return (
     <div className="space-y-6">
       <div>
@@ -157,49 +134,19 @@ export const BasicDetailsStep = ({ data, updateData }: BasicDetailsStepProps) =>
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="address" className="flex items-center gap-2">
-            <MapPin className="w-4 h-4" />
-            Address *
-            {loadError && (
-              <span className="text-xs text-muted-foreground">(Maps unavailable)</span>
-            )}
-          </Label>
-          {isLoaded && !loadError ? (
-            <Autocomplete onLoad={onLoad} onPlaceChanged={onPlaceChanged}>
-              <Textarea
-                id="address"
-                placeholder="Start typing address..."
-                value={data.address}
-                onChange={(e) => {
-                  updateData({ address: e.target.value });
-                  validateField("address", e.target.value);
-                }}
-                onBlur={(e) => validateField("address", e.target.value)}
-                required
-                rows={3}
-              />
-            </Autocomplete>
-          ) : (
-            <div className="relative">
-              <Textarea
-                id="address"
-                placeholder="123 Main Street, City, State, ZIP"
-                value={data.address}
-                onChange={(e) => {
-                  updateData({ address: e.target.value });
-                  validateField("address", e.target.value);
-                }}
-                onBlur={(e) => validateField("address", e.target.value)}
-                required
-                rows={3}
-              />
-              {!isLoaded && !loadError && (
-                <div className="absolute top-2 right-2">
-                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                </div>
-              )}
-            </div>
-          )}
+          <Label htmlFor="address">Address *</Label>
+          <Textarea
+            id="address"
+            placeholder="123 Main Street, City, State, ZIP"
+            value={data.address}
+            onChange={(e) => {
+              updateData({ address: e.target.value });
+              validateField("address", e.target.value);
+            }}
+            onBlur={(e) => validateField("address", e.target.value)}
+            required
+            rows={3}
+          />
           {validationErrors.address && (
             <p className="text-sm text-destructive">{validationErrors.address}</p>
           )}
