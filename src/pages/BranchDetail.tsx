@@ -93,10 +93,11 @@ export default function BranchDetail() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+        <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center mb-6">
           <Button
             variant="ghost"
             onClick={() => navigate("/dashboard")}
+            className="w-full sm:w-auto"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Dashboard
@@ -104,6 +105,7 @@ export default function BranchDetail() {
           <Button
             variant="outline"
             onClick={() => navigate("/calendar")}
+            className="w-full sm:w-auto"
           >
             <Calendar className="mr-2 h-4 w-4" />
             View Staff Calendar
@@ -111,39 +113,39 @@ export default function BranchDetail() {
         </div>
 
         <div className="mb-8">
-          <div className="flex items-start gap-4 mb-4">
+          <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
             {branch.logo_url ? (
               <img
                 src={branch.logo_url}
                 alt={branch.name}
-                className="w-20 h-20 rounded-lg object-cover"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
               />
             ) : (
-              <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center">
-                <Building2 className="h-10 w-10 text-muted-foreground" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
               </div>
             )}
-            <div className="flex-1">
-              <div className="flex items-center gap-3 mb-2">
-                <h1 className="text-4xl font-bold text-foreground">{branch.name}</h1>
-                <Badge>{branch.status}</Badge>
+            <div className="flex-1 min-w-0 w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground truncate">{branch.name}</h1>
+                <Badge className="w-fit">{branch.status}</Badge>
               </div>
-              <div className="flex flex-wrap gap-4 text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm sm:text-base text-muted-foreground">
                 <div className="flex items-center gap-2">
-                  <MapPin className="h-4 w-4" />
-                  <span>{branch.address}</span>
+                  <MapPin className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{branch.address}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Mail className="h-4 w-4" />
-                  <span>{branch.email}</span>
+                  <Mail className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{branch.email}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Phone className="h-4 w-4" />
-                  <span>{branch.phone}</span>
+                  <Phone className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{branch.phone}</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  <span>{branch.timezone}</span>
+                  <Clock className="h-4 w-4 flex-shrink-0" />
+                  <span className="truncate">{branch.timezone}</span>
                 </div>
               </div>
             </div>
@@ -151,16 +153,16 @@ export default function BranchDetail() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
-            <TabsTrigger value="services">Services ({services.length})</TabsTrigger>
-            <TabsTrigger value="staff">Staff</TabsTrigger>
-            <TabsTrigger value="schedule">Staff Schedule</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+            <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
+            <TabsTrigger value="services" className="text-xs sm:text-sm">Services ({services.length})</TabsTrigger>
+            <TabsTrigger value="staff" className="text-xs sm:text-sm">Staff</TabsTrigger>
+            <TabsTrigger value="schedule" className="text-xs sm:text-sm">Schedule</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
-            <div className="grid gap-6 lg:grid-cols-2">
-              <div className="space-y-6">
+            <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+              <div className="space-y-4 sm:space-y-6">
                 {branch.hero_image_url && (
                   <Card>
                     <CardHeader>
