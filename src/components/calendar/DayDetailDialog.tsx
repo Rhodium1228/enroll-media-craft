@@ -73,6 +73,33 @@ export default function DayDetailDialog({
     }
   }, [open]);
 
+  useEffect(() => {
+    if (open && date) {
+      // Set up real-time subscription for the selected date
+      const dateStr = format(date, "yyyy-MM-dd");
+      const channel = supabase
+        .channel('day-detail-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'staff_date_assignments',
+            filter: `date=eq.${dateStr}`
+          },
+          (payload) => {
+            console.log('Assignment change for selected date:', payload);
+            onScheduleUpdate();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [open, date]);
+
   const fetchStaffAndBranches = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();

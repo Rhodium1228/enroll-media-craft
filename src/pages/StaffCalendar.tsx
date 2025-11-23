@@ -62,6 +62,27 @@ export default function StaffCalendar() {
 
   useEffect(() => {
     fetchSchedules();
+
+    // Set up real-time subscription for staff date assignments
+    const channel = supabase
+      .channel('staff-calendar-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_date_assignments'
+        },
+        (payload) => {
+          console.log('Staff assignment change detected:', payload);
+          fetchSchedules();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   useEffect(() => {
