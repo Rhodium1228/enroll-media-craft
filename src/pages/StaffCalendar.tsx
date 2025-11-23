@@ -15,6 +15,7 @@ import MonthCalendar from "@/components/calendar/MonthCalendar";
 import DayDetailDialog from "@/components/calendar/DayDetailDialog";
 import DraggableScheduleBlock from "@/components/calendar/DraggableScheduleBlock";
 import DroppableDayCell from "@/components/calendar/DroppableDayCell";
+import TimelineView from "@/components/calendar/TimelineView";
 
 interface Staff {
   id: string;
@@ -71,7 +72,7 @@ export default function StaffCalendar() {
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [allStaff, setAllStaff] = useState<Staff[]>([]);
   const [conflicts, setConflicts] = useState<Map<string, ScheduleConflict[]>>(new Map());
-  const [viewMode, setViewMode] = useState<"week" | "month">("week");
+  const [viewMode, setViewMode] = useState<"week" | "month" | "timeline">("week");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
   const [dragConflicts, setDragConflicts] = useState<ScheduleConflict[]>([]);
@@ -421,14 +422,17 @@ export default function StaffCalendar() {
               <p className="text-muted-foreground mt-2">
                 {viewMode === "week" 
                   ? "Drag and drop schedule blocks to reschedule staff between days"
-                  : "Monthly calendar with staff availability"}
+                  : viewMode === "month"
+                  ? "Monthly calendar with staff availability"
+                  : "Daily timeline showing exact working hours and gaps"}
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "week" | "month")}>
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "week" | "month" | "timeline")}>
                 <TabsList>
-                  <TabsTrigger value="week">Week View</TabsTrigger>
-                  <TabsTrigger value="month">Month View</TabsTrigger>
+                  <TabsTrigger value="week">Week</TabsTrigger>
+                  <TabsTrigger value="month">Month</TabsTrigger>
+                  <TabsTrigger value="timeline">Timeline</TabsTrigger>
                 </TabsList>
               </Tabs>
               <div className="w-64">
@@ -469,6 +473,12 @@ export default function StaffCalendar() {
             schedules={filteredSchedules}
             conflicts={conflicts}
             onDayClick={handleDayClick}
+          />
+        ) : viewMode === "timeline" ? (
+          <TimelineView
+            schedules={filteredSchedules}
+            selectedDate={selectedDate || new Date()}
+            onDateChange={(date) => setSelectedDate(date)}
           />
         ) : (
           groupedByStaff.size === 0 ? (
