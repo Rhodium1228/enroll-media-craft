@@ -1,11 +1,26 @@
 import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface BranchOverride {
   id: string;
@@ -13,6 +28,11 @@ interface BranchOverride {
   override_type: string;
   time_slots: any[];
   reason: string | null;
+}
+
+interface TimeSlot {
+  open: string;
+  close: string;
 }
 
 interface BranchHoursCalendarProps {
@@ -25,6 +45,14 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
   const [overrides, setOverrides] = useState<BranchOverride[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
+  
+  // Edit form state
+  const [overrideType, setOverrideType] = useState<string>("closed");
+  const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([{ open: "09:00", close: "17:00" }]);
+  const [reason, setReason] = useState("");
 
   useEffect(() => {
     fetchOverrides();
@@ -97,7 +125,136 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
   };
 
   const handleDateClick = (date: Date) => {
-    setSelectedDate(isSameDay(date, selectedDate || new Date("1900-01-01")) ? null : date);
+    if (isSameDay(date, selectedDate || new Date("1900-01-01"))) {
+      // Clicking same date - toggle edit mode
+      if (isEditing) {
+        setIsEditing(false);
+        resetForm();
+      } else {
+        setIsEditing(true);
+        loadOverrideIntoForm(getOverrideForDate(date));
+      }
+    } else {
+      // Clicking different date
+      setSelectedDate(date);
+      setIsEditing(true);
+      loadOverrideIntoForm(getOverrideForDate(date));
+    }
+  };
+
+  const loadOverrideIntoForm = (override: BranchOverride | undefined) => {
+    if (override) {
+      setOverrideType(override.override_type);
+      setTimeSlots(override.time_slots.length > 0 ? override.time_slots : [{ open: "09:00", close: "17:00" }]);
+      setReason(override.reason || "");
+    } else {
+      resetForm();
+    }
+  };
+
+  const resetForm = () => {
+    setOverrideType("closed");
+    setTimeSlots([{ open: "09:00", close: "17:00" }]);
+    setReason("");
+  };
+
+  const addTimeSlot = () => {
+    setTimeSlots([...timeSlots, { open: "09:00", close: "17:00" }]);
+  };
+
+  const removeTimeSlot = (index: number) => {
+    setTimeSlots(timeSlots.filter((_, i) => i !== index));
+  };
+
+  const updateTimeSlot = (index: number, field: "open" | "close", value: string) => {
+    const updated = [...timeSlots];
+    updated[index][field] = value;
+    setTimeSlots(updated);
+  };
+
+  const handleSave = async () => {
+    if (!selectedDate) return;
+
+    if (overrideType === "custom_hours" && timeSlots.length === 0) {
+      toast.error("Please add at least one time slot for custom hours");
+      return;
+    }
+
+    // Validate time slots
+    for (const slot of timeSlots) {
+      if (slot.open >= slot.close) {
+        toast.error("Closing time must be after opening time");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    try {
+      const overrideData = {
+        branch_id: branchId,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        override_type: overrideType,
+        time_slots: (overrideType === "custom_hours" ? timeSlots : []) as any,
+        reason: reason.trim() || null,
+      };
+
+      const existingOverride = getOverrideForDate(selectedDate);
+
+      if (existingOverride) {
+        const { error } = await supabase
+          .from("branch_schedule_overrides")
+          .update(overrideData)
+          .eq("id", existingOverride.id);
+
+        if (error) throw error;
+        toast.success("Override updated successfully");
+      } else {
+        const { error } = await supabase
+          .from("branch_schedule_overrides")
+          .insert([overrideData]);
+
+        if (error) throw error;
+        toast.success("Override created successfully");
+      }
+
+      await fetchOverrides();
+      setIsEditing(false);
+      resetForm();
+    } catch (error: any) {
+      console.error("Error saving override:", error);
+      toast.error(error.message || "Failed to save override");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteId) return;
+
+    try {
+      const { error } = await supabase
+        .from("branch_schedule_overrides")
+        .delete()
+        .eq("id", deleteId);
+
+      if (error) throw error;
+
+      toast.success("Override deleted successfully");
+      await fetchOverrides();
+      setIsEditing(false);
+      resetForm();
+    } catch (error: any) {
+      console.error("Error deleting override:", error);
+      toast.error("Failed to delete override");
+    } finally {
+      setDeleteId(null);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    resetForm();
   };
 
   const selectedOverride = selectedDate ? getOverrideForDate(selectedDate) : null;
@@ -207,45 +364,202 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
             </div>
           </div>
 
-          {/* Selected Date Details */}
+          {/* Selected Date Details & Quick Edit */}
           {selectedDate && (
-            <div className="pt-4 border-t">
-              <h4 className="font-semibold mb-2">
-                {format(selectedDate, "EEEE, MMMM d, yyyy")}
-              </h4>
-              {selectedOverride ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <Badge variant={selectedOverride.override_type === "closed" ? "destructive" : "secondary"}>
-                      {selectedOverride.override_type === "closed" ? "Closed" : "Custom Hours"}
-                    </Badge>
+            <div className="pt-4 border-t space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">
+                  {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                </h4>
+                {!isEditing && (
+                  <div className="flex gap-2">
+                    {selectedOverride ? (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => {
+                            setIsEditing(true);
+                            loadOverrideIntoForm(selectedOverride);
+                          }}
+                        >
+                          <Edit2 className="h-3 w-3 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setDeleteId(selectedOverride.id)}
+                        >
+                          <Trash2 className="h-3 w-3 mr-1" />
+                          Delete
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          setIsEditing(true);
+                          resetForm();
+                        }}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Override
+                      </Button>
+                    )}
                   </div>
-                  {selectedOverride.override_type === "custom_hours" && selectedOverride.time_slots.length > 0 && (
-                    <div className="text-sm">
-                      <span className="font-medium">Hours: </span>
-                      {selectedOverride.time_slots.map((slot: any, idx: number) => (
-                        <span key={idx}>
-                          {slot.open} - {slot.close}
-                          {idx < selectedOverride.time_slots.length - 1 && ", "}
-                        </span>
+                )}
+              </div>
+
+              {isEditing ? (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
+                  <div className="space-y-2">
+                    <Label>Override Type</Label>
+                    <RadioGroup value={overrideType} onValueChange={setOverrideType}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="closed" id="quick-closed" />
+                        <Label htmlFor="quick-closed" className="font-normal cursor-pointer">
+                          🔴 Closed - Branch closed for this date
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="custom_hours" id="quick-custom" />
+                        <Label htmlFor="quick-custom" className="font-normal cursor-pointer">
+                          🟡 Custom Hours - Different hours than regular schedule
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {overrideType === "custom_hours" && (
+                    <div className="space-y-3">
+                      <Label>Time Slots</Label>
+                      {timeSlots.map((slot, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="time"
+                            value={slot.open}
+                            onChange={(e) => updateTimeSlot(index, "open", e.target.value)}
+                            className="flex-1"
+                          />
+                          <span className="text-muted-foreground text-sm">to</span>
+                          <Input
+                            type="time"
+                            value={slot.close}
+                            onChange={(e) => updateTimeSlot(index, "close", e.target.value)}
+                            className="flex-1"
+                          />
+                          {timeSlots.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeTimeSlot(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
                       ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addTimeSlot}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Time Slot
+                      </Button>
                     </div>
                   )}
-                  {selectedOverride.reason && (
-                    <div className="text-sm text-muted-foreground">
-                      <span className="font-medium">Reason: </span>
-                      {selectedOverride.reason}
-                    </div>
-                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="quick-reason">Reason (Optional)</Label>
+                    <Textarea
+                      id="quick-reason"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="e.g., Christmas Holiday, Black Friday Sale"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      onClick={handleCancelEdit}
+                      disabled={isSaving}
+                      size="sm"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={handleSave}
+                      disabled={isSaving}
+                      size="sm"
+                    >
+                      <Save className="h-3 w-3 mr-1" />
+                      {isSaving ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-sm text-muted-foreground">
-                  Regular operating hours apply
+                <div>
+                  {selectedOverride ? (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={selectedOverride.override_type === "closed" ? "destructive" : "secondary"}>
+                          {selectedOverride.override_type === "closed" ? "Closed" : "Custom Hours"}
+                        </Badge>
+                      </div>
+                      {selectedOverride.override_type === "custom_hours" && selectedOverride.time_slots.length > 0 && (
+                        <div className="text-sm">
+                          <span className="font-medium">Hours: </span>
+                          {selectedOverride.time_slots.map((slot: any, idx: number) => (
+                            <span key={idx}>
+                              {slot.open} - {slot.close}
+                              {idx < selectedOverride.time_slots.length - 1 && ", "}
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      {selectedOverride.reason && (
+                        <div className="text-sm text-muted-foreground">
+                          <span className="font-medium">Reason: </span>
+                          {selectedOverride.reason}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-sm text-muted-foreground">
+                      Regular operating hours apply
+                    </div>
+                  )}
                 </div>
               )}
             </div>
           )}
         </div>
+
+        <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete Override?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will remove the date-specific hours and revert to the regular weekly schedule for this date.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDelete}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </CardContent>
     </Card>
   );
