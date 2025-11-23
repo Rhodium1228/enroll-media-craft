@@ -4,7 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, Package, Plus, LogOut } from "lucide-react";
+import { Building2, Users, Package, Plus, LogOut, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface Branch {
@@ -118,6 +118,10 @@ export default function BranchDashboard() {
             <p className="text-muted-foreground">Manage your branches, staff, and services</p>
           </div>
           <div className="flex gap-2">
+            <Button onClick={() => navigate("/calendar")} variant="outline">
+              <Calendar className="mr-2 h-4 w-4" />
+              Staff Calendar
+            </Button>
             <Button onClick={() => navigate("/")}>
               <Plus className="mr-2 h-4 w-4" />
               New Branch
