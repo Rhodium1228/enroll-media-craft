@@ -286,15 +286,15 @@ export function BranchStaffScheduleCalendar({
             Staff Schedule Calendar
           </CardTitle>
         </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="flex flex-col lg:flex-row gap-6">
+      <CardContent className="space-y-6 p-3 sm:p-6">
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
           {/* Calendar */}
-          <div className="flex-1">
+          <div className="flex-1 w-full">
             <Calendar
               mode="single"
               selected={selectedDate}
               onSelect={setSelectedDate}
-              className="rounded-md border"
+              className="rounded-md border w-full"
               modifiers={{
                 hasAssignments: datesWithAssignments,
               }}
@@ -319,13 +319,13 @@ export function BranchStaffScheduleCalendar({
 
                 <Separator />
 
-                {selectedDateAssignments.length > 0 ? (
+                 {selectedDateAssignments.length > 0 ? (
                   <div className="space-y-3">
                     {selectedDateAssignments.map((assignment: any) => (
                       <Card key={assignment.id}>
-                        <CardContent className="p-4">
-                          <div className="flex justify-between items-start">
-                            <div className="space-y-1">
+                        <CardContent className="p-3 sm:p-4">
+                          <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                            <div className="space-y-1 flex-1">
                               <p className="font-medium">
                                 {assignment.staff.first_name}{" "}
                                 {assignment.staff.last_name}
@@ -351,6 +351,7 @@ export function BranchStaffScheduleCalendar({
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="self-end sm:self-start"
                               onClick={() =>
                                 handleDeleteAssignment(assignment.id)
                               }
@@ -399,27 +400,27 @@ export function BranchStaffScheduleCalendar({
 
       {/* Conflict Warning Dialog */}
       <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-[95vw] sm:max-w-lg mx-4">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
+            <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
               <AlertCircle className="h-5 w-5 text-destructive" />
               Schedule Conflict Detected
             </AlertDialogTitle>
-            <AlertDialogDescription className="whitespace-pre-line">
+            <AlertDialogDescription className="whitespace-pre-line text-sm">
               {conflictWarning}
               {"\n\n"}
               Do you want to proceed with this assignment anyway?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
             <AlertDialogCancel onClick={() => {
               setShowConflictDialog(false);
               setConflictWarning("");
               setPendingAssignment(null);
-            }}>
+            }} className="w-full sm:w-auto">
               Cancel
             </AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmWithConflict}>
+            <AlertDialogAction onClick={handleConfirmWithConflict} className="w-full sm:w-auto">
               Proceed Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
