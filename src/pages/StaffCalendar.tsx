@@ -33,6 +33,8 @@ interface StaffSchedule {
   branch: Branch;
   working_hours: any;
   branch_color: string;
+  overrides?: any[];
+  leave_requests?: any[];
 }
 
 const BRANCH_COLORS = [
@@ -120,6 +122,17 @@ export default function StaffCalendar() {
 
       if (error) throw error;
 
+      // Fetch schedule overrides
+      const { data: overridesData } = await supabase
+        .from("staff_schedule_overrides")
+        .select("*");
+
+      // Fetch leave requests
+      const { data: leaveData } = await supabase
+        .from("staff_leave_requests")
+        .select("*")
+        .eq("status", "approved");
+
       // Extract unique staff
       const uniqueStaff = Array.from(
         new Map(
@@ -142,11 +155,22 @@ export default function StaffCalendar() {
             colorIndex++;
           }
 
+          // Filter overrides and leave for this staff-branch combination
+          const staffOverrides = (overridesData || []).filter(
+            (o: any) => o.staff_id === item.staff_id && o.branch_id === item.branch_id
+          );
+          
+          const staffLeave = (leaveData || []).filter(
+            (l: any) => l.staff_id === item.staff_id
+          );
+
           return {
             staff: item.staff,
             branch: item.branches,
             working_hours: item.working_hours,
             branch_color: branchColorMap.get(item.branch_id)!,
+            overrides: staffOverrides,
+            leave_requests: staffLeave,
           };
         });
 

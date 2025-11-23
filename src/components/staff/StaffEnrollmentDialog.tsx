@@ -16,6 +16,9 @@ import StaffScheduleBuilder from "./StaffScheduleBuilder";
 import browserImageCompression from "browser-image-compression";
 import { detectScheduleConflicts, groupConflictsByDay } from "@/lib/scheduleConflicts";
 import type { ScheduleConflict } from "@/lib/scheduleConflicts";
+import DateScheduleOverride from "../calendar/DateScheduleOverride";
+import LeaveRequestManager from "../calendar/LeaveRequestManager";
+import ScheduleOverrideList from "../calendar/ScheduleOverrideList";
 
 interface Staff {
   id: string;
@@ -389,10 +392,12 @@ export default function StaffEnrollmentDialog({
           </DialogHeader>
 
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="personal">Personal Info</TabsTrigger>
             <TabsTrigger value="schedule">Schedule</TabsTrigger>
             <TabsTrigger value="services">Services</TabsTrigger>
+            <TabsTrigger value="overrides" disabled={!staff?.id}>Date Overrides</TabsTrigger>
+            <TabsTrigger value="leave" disabled={!staff?.id}>Leave</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal" className="space-y-4 mt-4">
@@ -601,6 +606,71 @@ export default function StaffEnrollmentDialog({
                   </Card>
                 ))}
               </div>
+            )}
+          </TabsContent>
+
+          <TabsContent value="overrides" className="mt-4">
+            {staff?.id ? (
+              <div className="space-y-6">
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-2">Date-Specific Schedule Overrides</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Set custom hours or mark unavailable for specific dates
+                  </p>
+                </div>
+                
+                <DateScheduleOverride
+                  staffId={staff.id}
+                  branchId={branchId}
+                  onOverrideAdded={() => {
+                    // Refresh could be added here if needed
+                  }}
+                />
+
+                <ScheduleOverrideList
+                  staffId={staff.id}
+                  branchId={branchId}
+                  onOverrideDeleted={() => {
+                    // Refresh could be added here if needed
+                  }}
+                />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">
+                    Save staff member first to manage date overrides
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="leave" className="mt-4">
+            {staff?.id ? (
+              <div>
+                <div className="mb-4">
+                  <h3 className="font-semibold mb-2">Leave Management</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Manage time-off requests and unavailability
+                  </p>
+                </div>
+
+                <LeaveRequestManager
+                  staffId={staff.id}
+                  onLeaveChanged={() => {
+                    // Refresh could be added here if needed
+                  }}
+                />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="pt-6">
+                  <p className="text-center text-muted-foreground">
+                    Save staff member first to manage leave requests
+                  </p>
+                </CardContent>
+              </Card>
             )}
           </TabsContent>
         </Tabs>

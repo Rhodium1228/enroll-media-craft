@@ -193,6 +193,101 @@ export type Database = {
           },
         ]
       }
+      staff_leave_requests: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          leave_type: Database["public"]["Enums"]["leave_type"]
+          reason: string | null
+          staff_id: string
+          start_date: string
+          status: Database["public"]["Enums"]["leave_status"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          leave_type: Database["public"]["Enums"]["leave_type"]
+          reason?: string | null
+          staff_id: string
+          start_date: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          leave_type?: Database["public"]["Enums"]["leave_type"]
+          reason?: string | null
+          staff_id?: string
+          start_date?: string
+          status?: Database["public"]["Enums"]["leave_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_leave_requests_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_schedule_overrides: {
+        Row: {
+          branch_id: string
+          created_at: string
+          date: string
+          id: string
+          override_type: Database["public"]["Enums"]["override_type"]
+          reason: string | null
+          staff_id: string
+          time_slots: Json | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          date: string
+          id?: string
+          override_type: Database["public"]["Enums"]["override_type"]
+          reason?: string | null
+          staff_id: string
+          time_slots?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          override_type?: Database["public"]["Enums"]["override_type"]
+          reason?: string | null
+          staff_id?: string
+          time_slots?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_schedule_overrides_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_schedule_overrides_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_services: {
         Row: {
           branch_id: string
@@ -247,7 +342,9 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      leave_status: "pending" | "approved" | "rejected"
+      leave_type: "vacation" | "sick" | "personal" | "other"
+      override_type: "available" | "unavailable" | "custom_hours"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -374,6 +471,10 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      leave_status: ["pending", "approved", "rejected"],
+      leave_type: ["vacation", "sick", "personal", "other"],
+      override_type: ["available", "unavailable", "custom_hours"],
+    },
   },
 } as const
