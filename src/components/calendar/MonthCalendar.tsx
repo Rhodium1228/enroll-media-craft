@@ -5,9 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { ScheduleConflict } from "@/lib/scheduleConflicts";
-import { getScheduleType, getScheduleTypeIcon } from "@/lib/scheduleTypeUtils";
-import type { ScheduleType } from "@/lib/scheduleTypeUtils";
+import type { DateAssignmentConflict, TimeSlot } from "@/lib/dateAssignmentUtils";
 
 interface Staff {
   id: string;
@@ -20,18 +18,21 @@ interface Branch {
   name: string;
 }
 
-interface StaffSchedule {
+interface StaffDateSchedule {
   staff: Staff;
   branch: Branch;
-  working_hours: any;
+  assignment: {
+    id: string;
+    date: string;
+    time_slots: TimeSlot[];
+    reason?: string;
+  };
   branch_color: string;
-  overrides?: any[];
-  leave_requests?: any[];
 }
 
 interface MonthCalendarProps {
-  schedules: StaffSchedule[];
-  conflicts: Map<string, ScheduleConflict[]>;
+  schedules: StaffDateSchedule[];
+  conflicts: Map<string, DateAssignmentConflict[]>;
   onDayClick: (date: Date) => void;
 }
 
@@ -47,21 +48,12 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
 
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
 
-  const getDayOfWeek = (date: Date) => {
-    return format(date, "EEEE").toLowerCase();
-  };
-
   const getStaffForDay = (date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
     const staffOnDay = new Set<string>();
 
     schedules.forEach((schedule) => {
-      const scheduleType = getScheduleType(
-        date,
-        schedule.working_hours || {},
-        schedule.overrides || [],
-        schedule.leave_requests || []
-      );
-      if (scheduleType === 'regular' || scheduleType === 'custom') {
+      if (schedule.assignment.date === dateStr && schedule.assignment.time_slots.length > 0) {
         staffOnDay.add(schedule.staff.id);
       }
     });
@@ -69,37 +61,10 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
     return staffOnDay.size;
   };
 
-  const getScheduleTypesForDay = (date: Date): Record<ScheduleType, number> => {
-    const typeCounts: Record<ScheduleType, number> = {
-      regular: 0,
-      custom: 0,
-      unavailable: 0,
-      closed: 0,
-    };
-
-    schedules.forEach((schedule) => {
-      const scheduleType = getScheduleType(
-        date,
-        schedule.working_hours || {},
-        schedule.overrides || [],
-        schedule.leave_requests || []
-      );
-      typeCounts[scheduleType]++;
-    });
-
-    return typeCounts;
-  };
-
   const getConflictsForDay = (date: Date) => {
-    const dayOfWeek = getDayOfWeek(date);
-    let conflictCount = 0;
-
-    conflicts.forEach((staffConflicts) => {
-      const dayConflicts = staffConflicts.filter((c) => c.day === dayOfWeek);
-      conflictCount += dayConflicts.length;
-    });
-
-    return conflictCount;
+    const dateStr = format(date, "yyyy-MM-dd");
+    const dayConflicts = conflicts.get(dateStr) || [];
+    return dayConflicts.length;
   };
 
   const isToday = (date: Date) => isSameDay(date, new Date());
@@ -153,7 +118,6 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
             {calendarDays.map((date) => {
               const staffCount = getStaffForDay(date);
               const conflictCount = getConflictsForDay(date);
-              const scheduleTypes = getScheduleTypesForDay(date);
               const isCurrentMonth = isSameMonth(date, currentDate);
               const isCurrentDay = isToday(date);
 
@@ -191,34 +155,10 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
                   {isCurrentMonth && (
                     <div className="w-full space-y-1">
                       {staffCount > 0 ? (
-                        <>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
-                            <Users className="h-3 w-3" />
-                            <span>{staffCount} staff</span>
-                          </div>
-                          
-                          {/* Schedule Type Indicators */}
-                          <div className="space-y-0.5">
-                            {scheduleTypes.regular > 0 && (
-                              <div className="flex items-center gap-1 text-xs">
-                                <span>🟢</span>
-                                <span className="text-muted-foreground">{scheduleTypes.regular}</span>
-                              </div>
-                            )}
-                            {scheduleTypes.custom > 0 && (
-                              <div className="flex items-center gap-1 text-xs">
-                                <span>🟡</span>
-                                <span className="text-muted-foreground">{scheduleTypes.custom}</span>
-                              </div>
-                            )}
-                            {scheduleTypes.unavailable > 0 && (
-                              <div className="flex items-center gap-1 text-xs">
-                                <span>🔴</span>
-                                <span className="text-muted-foreground">{scheduleTypes.unavailable}</span>
-                              </div>
-                            )}
-                          </div>
-                        </>
+                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <Users className="h-3 w-3" />
+                          <span>{staffCount} staff</span>
+                        </div>
                       ) : (
                         <div className="text-xs text-muted-foreground">No staff</div>
                       )}
