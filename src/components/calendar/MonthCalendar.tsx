@@ -1,10 +1,11 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, startOfWeek, endOfWeek } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, AlertTriangle, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, AlertTriangle, Users, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
 import type { DateAssignmentConflict, TimeSlot } from "@/lib/dateAssignmentUtils";
 
 interface Staff {
@@ -40,6 +41,7 @@ const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export default function MonthCalendar({ schedules, conflicts, onDayClick }: MonthCalendarProps) {
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [appointmentCounts, setAppointmentCounts] = useState<Map<string, number>>(new Map());
 
   const monthStart = startOfMonth(currentDate);
   const monthEnd = endOfMonth(currentDate);
@@ -47,6 +49,45 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
   const calendarEnd = endOfWeek(monthEnd);
 
   const calendarDays = eachDayOfInterval({ start: calendarStart, end: calendarEnd });
+
+  useEffect(() => {
+    fetchAppointmentCounts();
+    
+    const channel = supabase
+      .channel('month-calendar-appointments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+        },
+        () => fetchAppointmentCounts()
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [currentDate]);
+
+  const fetchAppointmentCounts = async () => {
+    const startStr = format(calendarStart, "yyyy-MM-dd");
+    const endStr = format(calendarEnd, "yyyy-MM-dd");
+
+    const { data } = await supabase
+      .from("appointments")
+      .select("date")
+      .gte("date", startStr)
+      .lte("date", endStr)
+      .in("status", ["scheduled", "in_progress"]);
+
+    const counts = new Map<string, number>();
+    data?.forEach((apt) => {
+      counts.set(apt.date, (counts.get(apt.date) || 0) + 1);
+    });
+    setAppointmentCounts(counts);
+  };
 
   const getStaffForDay = (date: Date) => {
     const dateStr = format(date, "yyyy-MM-dd");
@@ -118,6 +159,7 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
             {calendarDays.map((date) => {
               const staffCount = getStaffForDay(date);
               const conflictCount = getConflictsForDay(date);
+              const appointmentCount = appointmentCounts.get(format(date, "yyyy-MM-dd")) || 0;
               const isCurrentMonth = isSameMonth(date, currentDate);
               const isCurrentDay = isToday(date);
 
@@ -161,6 +203,12 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
                         </div>
                       ) : (
                         <div className="text-xs text-muted-foreground">No staff</div>
+                      )}
+                      {appointmentCount > 0 && (
+                        <div className="flex items-center gap-1 text-xs text-primary">
+                          <Calendar className="h-3 w-3" />
+                          <span>{appointmentCount} appt{appointmentCount > 1 ? "s" : ""}</span>
+                        </div>
                       )}
                     </div>
                   )}
