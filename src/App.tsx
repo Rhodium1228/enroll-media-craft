@@ -7,6 +7,7 @@ import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import BranchDashboard from "./pages/BranchDashboard";
 import BranchDetail from "./pages/BranchDetail";
+import StaffManagement from "./pages/StaffManagement";
 import StaffCalendar from "./pages/StaffCalendar";
 import Appointments from "./pages/Appointments";
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,14 @@ const App = () => (
             element={
               <AppLayout>
                 <BranchDetail />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/staff"
+            element={
+              <AppLayout>
+                <StaffManagement />
               </AppLayout>
             }
           />
