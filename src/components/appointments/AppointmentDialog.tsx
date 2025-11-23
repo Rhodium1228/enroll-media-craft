@@ -87,10 +87,10 @@ export const AppointmentDialog = ({
   }, [selectedBranch, selectedDate]);
 
   useEffect(() => {
-    if (selectedBranch && selectedStaff) {
+    if (selectedBranch) {
       fetchServicesForStaff();
     }
-  }, [selectedBranch, selectedStaff]);
+  }, [selectedBranch]);
 
   useEffect(() => {
     if (selectedDate && selectedStaff && selectedService) {
@@ -141,27 +141,20 @@ export const AppointmentDialog = ({
   };
 
   const fetchServicesForStaff = async () => {
-    if (!selectedBranch || !selectedStaff) return;
+    if (!selectedBranch) return;
 
+    // Fetch all services for the branch (not filtered by staff)
     const { data, error } = await supabase
-      .from("staff_services")
-      .select(`
-        service:service_id (
-          id,
-          title,
-          duration,
-          cost
-        )
-      `)
-      .eq("branch_id", selectedBranch)
-      .eq("staff_id", selectedStaff);
+      .from("services")
+      .select("id, title, duration, cost")
+      .eq("branch_id", selectedBranch);
 
     if (error) {
       toast({ title: "Error loading services", variant: "destructive" });
       return;
     }
 
-    setServices(data?.map((item: any) => item.service) || []);
+    setServices(data || []);
   };
 
   const fetchAvailableSlots = async () => {
