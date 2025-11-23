@@ -6,6 +6,8 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, ChevronRight, AlertTriangle, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ScheduleConflict } from "@/lib/scheduleConflicts";
+import { getScheduleType, getScheduleTypeIcon } from "@/lib/scheduleTypeUtils";
+import type { ScheduleType } from "@/lib/scheduleTypeUtils";
 
 interface Staff {
   id: string;
@@ -23,6 +25,8 @@ interface StaffSchedule {
   branch: Branch;
   working_hours: any;
   branch_color: string;
+  overrides?: any[];
+  leave_requests?: any[];
 }
 
 interface MonthCalendarProps {
@@ -48,17 +52,42 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
   };
 
   const getStaffForDay = (date: Date) => {
-    const dayOfWeek = getDayOfWeek(date);
     const staffOnDay = new Set<string>();
 
     schedules.forEach((schedule) => {
-      const daySchedule = schedule.working_hours[dayOfWeek];
-      if (daySchedule && !daySchedule.closed && daySchedule.slots && daySchedule.slots.length > 0) {
+      const scheduleType = getScheduleType(
+        date,
+        schedule.working_hours || {},
+        schedule.overrides || [],
+        schedule.leave_requests || []
+      );
+      if (scheduleType === 'regular' || scheduleType === 'custom') {
         staffOnDay.add(schedule.staff.id);
       }
     });
 
     return staffOnDay.size;
+  };
+
+  const getScheduleTypesForDay = (date: Date): Record<ScheduleType, number> => {
+    const typeCounts: Record<ScheduleType, number> = {
+      regular: 0,
+      custom: 0,
+      unavailable: 0,
+      closed: 0,
+    };
+
+    schedules.forEach((schedule) => {
+      const scheduleType = getScheduleType(
+        date,
+        schedule.working_hours || {},
+        schedule.overrides || [],
+        schedule.leave_requests || []
+      );
+      typeCounts[scheduleType]++;
+    });
+
+    return typeCounts;
   };
 
   const getConflictsForDay = (date: Date) => {
@@ -124,6 +153,7 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
             {calendarDays.map((date) => {
               const staffCount = getStaffForDay(date);
               const conflictCount = getConflictsForDay(date);
+              const scheduleTypes = getScheduleTypesForDay(date);
               const isCurrentMonth = isSameMonth(date, currentDate);
               const isCurrentDay = isToday(date);
 
@@ -162,15 +192,31 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
                     <div className="w-full space-y-1">
                       {staffCount > 0 ? (
                         <>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground mb-1">
                             <Users className="h-3 w-3" />
                             <span>{staffCount} staff</span>
                           </div>
-                          <div className="w-full h-1 bg-primary/20 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-primary rounded-full"
-                              style={{ width: `${Math.min((staffCount / schedules.length) * 100, 100)}%` }}
-                            />
+                          
+                          {/* Schedule Type Indicators */}
+                          <div className="space-y-0.5">
+                            {scheduleTypes.regular > 0 && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <span>🟢</span>
+                                <span className="text-muted-foreground">{scheduleTypes.regular}</span>
+                              </div>
+                            )}
+                            {scheduleTypes.custom > 0 && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <span>🟡</span>
+                                <span className="text-muted-foreground">{scheduleTypes.custom}</span>
+                              </div>
+                            )}
+                            {scheduleTypes.unavailable > 0 && (
+                              <div className="flex items-center gap-1 text-xs">
+                                <span>🔴</span>
+                                <span className="text-muted-foreground">{scheduleTypes.unavailable}</span>
+                              </div>
+                            )}
                           </div>
                         </>
                       ) : (
