@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Clock, Calendar } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Clock, Calendar, Plus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import StaffList from "@/components/staff/StaffList";
+import { BranchDateOverride } from "@/components/branch/BranchDateOverride";
+import { BranchOverrideList } from "@/components/branch/BranchOverrideList";
 
 interface Branch {
   id: string;
@@ -37,6 +40,8 @@ export default function BranchDetail() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showOverrideDialog, setShowOverrideDialog] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   useEffect(() => {
     if (branchId) {
@@ -181,7 +186,7 @@ export default function BranchDetail() {
                     <p className="text-foreground">{branch.timezone}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-muted-foreground">Operating Hours</label>
+                    <label className="text-sm font-medium text-muted-foreground">Regular Operating Hours</label>
                     <div className="mt-2 space-y-2">
                       {Object.entries(branch.open_hours || {}).map(([day, hours]: [string, any]) => (
                         <div key={day} className="flex justify-between text-sm">
@@ -193,6 +198,34 @@ export default function BranchDetail() {
                       ))}
                     </div>
                   </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle>Schedule Overrides</CardTitle>
+                    <Button
+                      size="sm"
+                      onClick={() => setShowOverrideDialog(true)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Override
+                    </Button>
+                  </div>
+                  <CardDescription>
+                    Date-specific hours for holidays and special events
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <BranchOverrideList
+                    branchId={branchId!}
+                    onEdit={(override) => {
+                      // Handle edit functionality if needed
+                      setShowOverrideDialog(true);
+                    }}
+                    refreshTrigger={refreshTrigger}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -234,6 +267,25 @@ export default function BranchDetail() {
             <StaffList branchId={branchId!} />
           </TabsContent>
         </Tabs>
+
+        <Dialog open={showOverrideDialog} onOpenChange={setShowOverrideDialog}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Branch Schedule Override</DialogTitle>
+              <DialogDescription>
+                Set custom operating hours or mark the branch as closed for specific dates
+              </DialogDescription>
+            </DialogHeader>
+            <BranchDateOverride
+              branchId={branchId!}
+              onSaved={() => {
+                setShowOverrideDialog(false);
+                setRefreshTrigger(prev => prev + 1);
+              }}
+              onCancel={() => setShowOverrideDialog(false)}
+            />
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
