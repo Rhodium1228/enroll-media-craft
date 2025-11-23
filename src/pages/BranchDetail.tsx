@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import StaffList from "@/components/staff/StaffList";
 import { BranchDateOverride } from "@/components/branch/BranchDateOverride";
 import { BranchOverrideList } from "@/components/branch/BranchOverrideList";
+import { BranchHoursCalendar } from "@/components/branch/BranchHoursCalendar";
 
 interface Branch {
   id: string;
@@ -156,78 +157,86 @@ export default function BranchDetail() {
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
-            <div className="grid gap-6">
-              {branch.hero_image_url && (
+            <div className="grid gap-6 lg:grid-cols-2">
+              <div className="space-y-6">
+                {branch.hero_image_url && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle>Hero Image</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <img
+                        src={branch.hero_image_url}
+                        alt="Branch hero"
+                        className="w-full h-64 object-cover rounded-lg"
+                      />
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card>
                   <CardHeader>
-                    <CardTitle>Hero Image</CardTitle>
+                    <CardTitle>Branch Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Status</label>
+                      <p className="text-foreground">{branch.status}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Timezone</label>
+                      <p className="text-foreground">{branch.timezone}</p>
+                    </div>
+                    <div>
+                      <label className="text-sm font-medium text-muted-foreground">Regular Operating Hours</label>
+                      <div className="mt-2 space-y-2">
+                        {Object.entries(branch.open_hours || {}).map(([day, hours]: [string, any]) => (
+                          <div key={day} className="flex justify-between text-sm">
+                            <span className="font-medium capitalize">{day}</span>
+                            <span className="text-muted-foreground">
+                              {hours?.closed ? "Closed" : `${hours?.open || "N/A"} - ${hours?.close || "N/A"}`}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Schedule Overrides</CardTitle>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowOverrideDialog(true)}
+                      >
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Override
+                      </Button>
+                    </div>
+                    <CardDescription>
+                      Date-specific hours for holidays and special events
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <img
-                      src={branch.hero_image_url}
-                      alt="Branch hero"
-                      className="w-full h-64 object-cover rounded-lg"
+                    <BranchOverrideList
+                      branchId={branchId!}
+                      onEdit={(override) => {
+                        setShowOverrideDialog(true);
+                      }}
+                      refreshTrigger={refreshTrigger}
                     />
                   </CardContent>
                 </Card>
-              )}
+              </div>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle>Branch Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Status</label>
-                    <p className="text-foreground">{branch.status}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Timezone</label>
-                    <p className="text-foreground">{branch.timezone}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-muted-foreground">Regular Operating Hours</label>
-                    <div className="mt-2 space-y-2">
-                      {Object.entries(branch.open_hours || {}).map(([day, hours]: [string, any]) => (
-                        <div key={day} className="flex justify-between text-sm">
-                          <span className="font-medium capitalize">{day}</span>
-                          <span className="text-muted-foreground">
-                            {hours?.closed ? "Closed" : `${hours?.open || "N/A"} - ${hours?.close || "N/A"}`}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center justify-between">
-                    <CardTitle>Schedule Overrides</CardTitle>
-                    <Button
-                      size="sm"
-                      onClick={() => setShowOverrideDialog(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Override
-                    </Button>
-                  </div>
-                  <CardDescription>
-                    Date-specific hours for holidays and special events
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <BranchOverrideList
-                    branchId={branchId!}
-                    onEdit={(override) => {
-                      // Handle edit functionality if needed
-                      setShowOverrideDialog(true);
-                    }}
-                    refreshTrigger={refreshTrigger}
-                  />
-                </CardContent>
-              </Card>
+              <div>
+                <BranchHoursCalendar
+                  branchId={branchId!}
+                  refreshTrigger={refreshTrigger}
+                />
+              </div>
             </div>
           </TabsContent>
 
