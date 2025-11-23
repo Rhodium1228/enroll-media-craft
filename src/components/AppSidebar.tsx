@@ -47,15 +47,15 @@ export function AppSidebar() {
   };
 
   return (
-    <Sidebar className="border-r bg-sidebar">
+    <Sidebar className="border-r bg-sidebar" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
         <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-lg">
+          <div className="bg-primary p-2 rounded-lg flex-shrink-0">
             <Building2 className="h-6 w-6 text-primary-foreground" />
           </div>
           {open && (
-            <div>
-              <h2 className="font-bold text-lg">BMS PRO</h2>
+            <div className="min-w-0">
+              <h2 className="font-bold text-lg truncate">BMS PRO</h2>
               <p className="text-xs text-muted-foreground">PINK</p>
             </div>
           )}
@@ -91,8 +91,9 @@ export function AppSidebar() {
           variant="ghost"
           className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
           onClick={handleSignOut}
+          size={open ? "default" : "icon"}
         >
-          <LogOut className="h-5 w-5" />
+          <LogOut className="h-5 w-5 flex-shrink-0" />
           {open && <span>Sign Out</span>}
         </Button>
       </div>
