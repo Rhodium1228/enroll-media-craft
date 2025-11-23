@@ -178,7 +178,7 @@ export const AppointmentDialog = ({
       .eq("staff_id", selectedStaff)
       .eq("branch_id", selectedBranch)
       .eq("date", dateStr)
-      .single();
+      .maybeSingle();
 
     if (assignError || !assignments) {
       setAvailableSlots([]);
