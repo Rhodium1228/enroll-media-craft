@@ -27,6 +27,8 @@ interface StaffSchedule {
   branch_color: string;
   overrides?: any[];
   leave_requests?: any[];
+  branch_overrides?: any[];
+  branch_hours?: any;
 }
 
 interface TimelineViewProps {

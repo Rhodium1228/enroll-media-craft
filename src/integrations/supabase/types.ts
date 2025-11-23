@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      branch_schedule_overrides: {
+        Row: {
+          branch_id: string
+          created_at: string
+          date: string
+          id: string
+          override_type: string
+          reason: string | null
+          time_slots: Json | null
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          date: string
+          id?: string
+          override_type: string
+          reason?: string | null
+          time_slots?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          override_type?: string
+          reason?: string | null
+          time_slots?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_schedule_overrides_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       branches: {
         Row: {
           address: string

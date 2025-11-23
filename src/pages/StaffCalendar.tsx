@@ -36,6 +36,8 @@ interface StaffSchedule {
   branch_color: string;
   overrides?: any[];
   leave_requests?: any[];
+  branch_overrides?: any[];
+  branch_hours?: any;
 }
 
 const BRANCH_COLORS = [
@@ -116,7 +118,8 @@ export default function StaffCalendar() {
           branches:branch_id (
             id,
             name,
-            created_by
+            created_by,
+            open_hours
           )
         `)
         .eq("branches.created_by", user.id);
@@ -133,6 +136,11 @@ export default function StaffCalendar() {
         .from("staff_leave_requests")
         .select("*")
         .eq("status", "approved");
+
+      // Fetch branch schedule overrides
+      const { data: branchOverridesData } = await supabase
+        .from("branch_schedule_overrides")
+        .select("*");
 
       // Extract unique staff
       const uniqueStaff = Array.from(
@@ -165,6 +173,11 @@ export default function StaffCalendar() {
             (l: any) => l.staff_id === item.staff_id
           );
 
+          // Filter branch overrides for this branch
+          const branchOverrides = (branchOverridesData || []).filter(
+            (bo: any) => bo.branch_id === item.branch_id
+          );
+
           return {
             staff: item.staff,
             branch: item.branches,
@@ -172,6 +185,8 @@ export default function StaffCalendar() {
             branch_color: branchColorMap.get(item.branch_id)!,
             overrides: staffOverrides,
             leave_requests: staffLeave,
+            branch_overrides: branchOverrides,
+            branch_hours: item.branches?.open_hours,
           };
         });
 
@@ -742,6 +757,10 @@ export default function StaffCalendar() {
                       <span className="text-[8px]">⋮⋮</span>
                     </div>
                     <span className="text-sm">Draggable (Week View)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs">🏢🔴</span>
+                    <span className="text-sm">Branch Closed</span>
                   </div>
                 </div>
               </div>
