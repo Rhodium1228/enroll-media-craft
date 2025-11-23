@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { AppointmentCardView } from "./AppointmentCardView";
 import {
   AppointmentWithDetails,
   groupAppointmentsByStaff,
@@ -24,7 +25,20 @@ export const AppointmentTimelineView = ({
   onAppointmentClick,
 }: AppointmentTimelineViewProps) => {
   const isMobile = useIsMobile();
-  const pixelsPerHour = isMobile ? 40 : 80;
+  
+  // On mobile, show card view instead of timeline
+  if (isMobile) {
+    return (
+      <AppointmentCardView
+        appointments={appointments}
+        date={date}
+        onAppointmentClick={onAppointmentClick}
+      />
+    );
+  }
+
+  // Desktop timeline view
+  const pixelsPerHour = 80;
   const startHour = 7; // 7 AM
   const endHour = 21; // 9 PM
   const totalHours = endHour - startHour;
