@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addDays, isWeekend, isBefore, startOfDay } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2, CheckSquare, Square, Sparkles } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2, CheckSquare, Square, Sparkles, Users, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,6 +23,8 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { detectDateAssignmentConflicts, formatConflictMessage } from "@/lib/dateAssignmentUtils";
+import type { TimeSlot as StaffTimeSlot } from "@/lib/dateAssignmentUtils";
 
 interface BranchOverride {
   id: string;
@@ -33,6 +37,21 @@ interface BranchOverride {
 interface TimeSlot {
   open: string;
   close: string;
+}
+
+interface Staff {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface StaffAssignment {
+  id: string;
+  staff_id: string;
+  date: string;
+  time_slots: StaffTimeSlot[];
+  reason: string | null;
+  staff: Staff;
 }
 
 interface BranchHoursCalendarProps {
@@ -58,8 +77,46 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
   const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([{ open: "09:00", close: "17:00" }]);
   const [reason, setReason] = useState("");
 
+  // Staff assignment state
+  const [availableStaff, setAvailableStaff] = useState<Staff[]>([]);
+  const [staffAssignments, setStaffAssignments] = useState<StaffAssignment[]>([]);
+  const [showStaffForm, setShowStaffForm] = useState(false);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
+  const [staffTimeSlots, setStaffTimeSlots] = useState<StaffTimeSlot[]>([{ start: "09:00", end: "17:00" }]);
+  const [staffReason, setStaffReason] = useState("");
+  const [conflictWarning, setConflictWarning] = useState<string>("");
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [pendingStaffAssignment, setPendingStaffAssignment] = useState<{
+    staffId: string;
+    timeSlots: StaffTimeSlot[];
+    reason?: string;
+  } | null>(null);
+
   useEffect(() => {
     fetchOverrides();
+    fetchAvailableStaff();
+    fetchStaffAssignments();
+    
+    // Set up realtime subscription for staff assignments
+    const channel = supabase
+      .channel('branch-staff-assignments')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_date_assignments',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => {
+          fetchStaffAssignments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [branchId, refreshTrigger]);
 
   const fetchOverrides = async () => {
@@ -79,6 +136,42 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
       console.error("Error fetching overrides:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchAvailableStaff = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("staff_branches")
+        .select("staff:staff_id(id, first_name, last_name)")
+        .eq("branch_id", branchId);
+
+      if (error) throw error;
+      const staffList = data?.map((item: any) => item.staff).filter(Boolean) || [];
+      setAvailableStaff(staffList);
+    } catch (error: any) {
+      console.error("Error fetching staff:", error);
+    }
+  };
+
+  const fetchStaffAssignments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("staff_date_assignments")
+        .select(`
+          *,
+          staff:staff_id (
+            id,
+            first_name,
+            last_name
+          )
+        `)
+        .eq("branch_id", branchId);
+
+      if (error) throw error;
+      setStaffAssignments((data || []) as any);
+    } catch (error: any) {
+      console.error("Error fetching staff assignments:", error);
     }
   };
 
@@ -110,12 +203,25 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
     return "bg-yellow-500/10 border-yellow-500/20"; // Custom hours
   };
 
-  const getDateIndicator = (date: Date): string => {
+  const getDateIndicator = (date: Date): React.ReactNode => {
     const override = getOverrideForDate(date);
-    if (!override) return "🟢";
+    const dateStr = format(date, "yyyy-MM-dd");
+    const staffCount = staffAssignments.filter(a => a.date === dateStr).length;
     
-    if (override.override_type === "closed") return "🔴";
-    return "🟡";
+    if (!override && staffCount === 0) return "🟢";
+    
+    return (
+      <div className="flex flex-col items-center gap-0.5">
+        {override ? (
+          <span className="text-[10px]">{override.override_type === "closed" ? "🔴" : "🟡"}</span>
+        ) : (
+          <span className="text-[10px]">🟢</span>
+        )}
+        {staffCount > 0 && (
+          <span className="text-[8px] font-bold text-primary">{staffCount}</span>
+        )}
+      </div>
+    );
   };
 
   const handlePreviousMonth = () => {
@@ -372,6 +478,138 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
     resetForm();
   };
 
+  // Staff assignment handlers
+  const checkStaffConflicts = async (staffId: string, date: Date, timeSlots: StaffTimeSlot[]) => {
+    const staff = availableStaff.find((s) => s.id === staffId);
+    if (!staff) return [];
+
+    const dateStr = format(date, "yyyy-MM-dd");
+
+    // Fetch existing assignments for this staff on this date at other branches
+    const { data, error } = await supabase
+      .from("staff_date_assignments")
+      .select(`
+        *,
+        branch:branch_id (
+          id,
+          name
+        )
+      `)
+      .eq("staff_id", staffId)
+      .eq("date", dateStr)
+      .neq("branch_id", branchId);
+
+    if (error || !data) return [];
+
+    const existingAssignments = data.map((assignment: any) => ({
+      branch_id: assignment.branch.id,
+      branch_name: assignment.branch.name,
+      time_slots: assignment.time_slots,
+    }));
+
+    return detectDateAssignmentConflicts(
+      staffId,
+      `${staff.first_name} ${staff.last_name}`,
+      dateStr,
+      timeSlots,
+      existingAssignments,
+      branchId
+    );
+  };
+
+  const handleAssignStaff = async () => {
+    if (!selectedStaffId || staffTimeSlots.length === 0 || !selectedDate) {
+      toast.error("Please select staff and at least one time slot");
+      return;
+    }
+
+    // Check for conflicts
+    const conflicts = await checkStaffConflicts(selectedStaffId, selectedDate, staffTimeSlots);
+
+    if (conflicts.length > 0) {
+      const conflictMsg = formatConflictMessage(conflicts);
+      setConflictWarning(conflictMsg);
+      setPendingStaffAssignment({ staffId: selectedStaffId, timeSlots: staffTimeSlots, reason: staffReason });
+      setShowConflictDialog(true);
+      return;
+    }
+
+    await saveStaffAssignment(selectedStaffId, selectedDate, staffTimeSlots, staffReason);
+  };
+
+  const saveStaffAssignment = async (staffId: string, date: Date, timeSlots: StaffTimeSlot[], reason?: string) => {
+    try {
+      const { error } = await supabase.from("staff_date_assignments").insert({
+        staff_id: staffId,
+        branch_id: branchId,
+        date: format(date, "yyyy-MM-dd"),
+        time_slots: timeSlots as any,
+        reason: reason || null,
+      });
+
+      if (error) throw error;
+
+      toast.success("Staff assigned successfully");
+      await fetchStaffAssignments();
+      setShowStaffForm(false);
+      resetStaffForm();
+    } catch (error: any) {
+      console.error("Error assigning staff:", error);
+      toast.error("Failed to assign staff");
+    }
+  };
+
+  const handleConfirmStaffWithConflict = () => {
+    if (pendingStaffAssignment && selectedDate) {
+      saveStaffAssignment(
+        pendingStaffAssignment.staffId,
+        selectedDate,
+        pendingStaffAssignment.timeSlots,
+        pendingStaffAssignment.reason
+      );
+    }
+    setShowConflictDialog(false);
+    setConflictWarning("");
+    setPendingStaffAssignment(null);
+  };
+
+  const handleDeleteStaffAssignment = async (assignmentId: string) => {
+    try {
+      const { error } = await supabase
+        .from("staff_date_assignments")
+        .delete()
+        .eq("id", assignmentId);
+
+      if (error) throw error;
+
+      toast.success("Staff assignment deleted");
+      await fetchStaffAssignments();
+    } catch (error: any) {
+      console.error("Error deleting assignment:", error);
+      toast.error("Failed to delete assignment");
+    }
+  };
+
+  const resetStaffForm = () => {
+    setSelectedStaffId("");
+    setStaffTimeSlots([{ start: "09:00", end: "17:00" }]);
+    setStaffReason("");
+  };
+
+  const addStaffTimeSlot = () => {
+    setStaffTimeSlots([...staffTimeSlots, { start: "09:00", end: "17:00" }]);
+  };
+
+  const removeStaffTimeSlot = (index: number) => {
+    setStaffTimeSlots(staffTimeSlots.filter((_, i) => i !== index));
+  };
+
+  const updateStaffTimeSlot = (index: number, field: "start" | "end", value: string) => {
+    const updated = [...staffTimeSlots];
+    updated[index][field] = value;
+    setStaffTimeSlots(updated);
+  };
+
   const selectedOverride = selectedDate ? getOverrideForDate(selectedDate) : null;
 
   const weekDays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -485,9 +723,9 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
                       {format(day, "d")}
                     </span>
                     {isCurrentMonth && (
-                      <span className="text-[10px] mt-0.5">
+                      <div className="mt-0.5">
                         {getDateIndicator(day)}
-                      </span>
+                      </div>
                     )}
                   </button>
                 );
@@ -649,191 +887,408 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
                 <h4 className="font-semibold">
                   {format(selectedDate, "EEEE, MMMM d, yyyy")}
                 </h4>
-                {!isEditing && (
-                  <div className="flex gap-2">
-                    {selectedOverride ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => {
-                            setIsEditing(true);
-                            loadOverrideIntoForm(selectedOverride);
-                          }}
-                        >
-                          <Edit2 className="h-3 w-3 mr-1" />
-                          Edit
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => setDeleteId(selectedOverride.id)}
-                        >
-                          <Trash2 className="h-3 w-3 mr-1" />
-                          Delete
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        onClick={() => {
-                          setIsEditing(true);
-                          resetForm();
-                        }}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Override
-                      </Button>
-                    )}
-                  </div>
-                )}
               </div>
 
-              {isEditing ? (
-                <div className="space-y-4 p-4 bg-muted/50 rounded-lg">
-                  <div className="space-y-2">
-                    <Label>Override Type</Label>
-                    <RadioGroup value={overrideType} onValueChange={setOverrideType}>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="closed" id="quick-closed" />
-                        <Label htmlFor="quick-closed" className="font-normal cursor-pointer">
-                          🔴 Closed - Branch closed for this date
-                        </Label>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <RadioGroupItem value="custom_hours" id="quick-custom" />
-                        <Label htmlFor="quick-custom" className="font-normal cursor-pointer">
-                          🟡 Custom Hours - Different hours than regular schedule
-                        </Label>
-                      </div>
-                    </RadioGroup>
-                  </div>
+              <Tabs defaultValue="hours" className="w-full">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="hours" className="text-xs sm:text-sm">Branch Hours</TabsTrigger>
+                  <TabsTrigger value="staff" className="text-xs sm:text-sm">Staff Assignments</TabsTrigger>
+                </TabsList>
 
-                  {overrideType === "custom_hours" && (
-                    <div className="space-y-3">
-                      <Label>Time Slots</Label>
-                      {timeSlots.map((slot, index) => (
-                        <div key={index} className="flex items-center gap-2">
-                          <Input
-                            type="time"
-                            value={slot.open}
-                            onChange={(e) => updateTimeSlot(index, "open", e.target.value)}
-                            className="flex-1"
-                          />
-                          <span className="text-muted-foreground text-sm">to</span>
-                          <Input
-                            type="time"
-                            value={slot.close}
-                            onChange={(e) => updateTimeSlot(index, "close", e.target.value)}
-                            className="flex-1"
-                          />
-                          {timeSlots.length > 1 && (
+                <TabsContent value="hours" className="space-y-4 mt-4">
+                  <div className="flex justify-between items-center">
+                    {!isEditing && (
+                      <div className="flex gap-2">
+                        {selectedOverride ? (
+                          <>
                             <Button
-                              type="button"
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => removeTimeSlot(index)}
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setIsEditing(true);
+                                loadOverrideIntoForm(selectedOverride);
+                              }}
                             >
-                              <X className="h-4 w-4" />
+                              <Edit2 className="h-3 w-3 mr-1" />
+                              Edit
                             </Button>
-                          )}
-                        </div>
-                      ))}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        onClick={addTimeSlot}
-                      >
-                        <Plus className="h-3 w-3 mr-1" />
-                        Add Time Slot
-                      </Button>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <Label htmlFor="quick-reason">Reason (Optional)</Label>
-                    <Textarea
-                      id="quick-reason"
-                      value={reason}
-                      onChange={(e) => setReason(e.target.value)}
-                      placeholder="e.g., Christmas Holiday, Black Friday Sale"
-                      rows={2}
-                    />
-                  </div>
-
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={handleCancelEdit}
-                      disabled={isSaving}
-                      size="sm"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      onClick={handleSave}
-                      disabled={isSaving}
-                      size="sm"
-                    >
-                      <Save className="h-3 w-3 mr-1" />
-                      {isSaving ? "Saving..." : "Save"}
-                    </Button>
-                  </div>
-                </div>
-              ) : (
-                <div>
-                  {selectedOverride ? (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Badge variant={selectedOverride.override_type === "closed" ? "destructive" : "secondary"}>
-                          {selectedOverride.override_type === "closed" ? "Closed" : "Custom Hours"}
-                        </Badge>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => setDeleteId(selectedOverride.id)}
+                            >
+                              <Trash2 className="h-3 w-3 mr-1" />
+                              Delete
+                            </Button>
+                          </>
+                        ) : (
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setIsEditing(true);
+                              resetForm();
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Override
+                          </Button>
+                        )}
                       </div>
-                      {selectedOverride.override_type === "custom_hours" && selectedOverride.time_slots.length > 0 && (
-                        <div className="text-sm">
-                          <span className="font-medium">Hours: </span>
-                          {selectedOverride.time_slots.map((slot: any, idx: number) => (
-                            <span key={idx}>
-                              {slot.open} - {slot.close}
-                              {idx < selectedOverride.time_slots.length - 1 && ", "}
-                            </span>
+                    )}
+                  </div>
+
+                  {isEditing ? (
+                    <div className="space-y-4 p-3 sm:p-4 bg-muted/50 rounded-lg">
+                      <div className="space-y-2">
+                        <Label className="text-sm">Override Type</Label>
+                        <RadioGroup value={overrideType} onValueChange={setOverrideType}>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="closed" id="quick-closed" />
+                            <Label htmlFor="quick-closed" className="font-normal cursor-pointer text-sm">
+                              🔴 Closed - Branch closed for this date
+                            </Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="custom_hours" id="quick-custom" />
+                            <Label htmlFor="quick-custom" className="font-normal cursor-pointer text-sm">
+                              🟡 Custom Hours - Different hours than regular schedule
+                            </Label>
+                          </div>
+                        </RadioGroup>
+                      </div>
+
+                      {overrideType === "custom_hours" && (
+                        <div className="space-y-3">
+                          <Label className="text-sm">Time Slots</Label>
+                          {timeSlots.map((slot, index) => (
+                            <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                              <div className="flex items-center gap-2 flex-1">
+                                <Input
+                                  type="time"
+                                  value={slot.open}
+                                  onChange={(e) => updateTimeSlot(index, "open", e.target.value)}
+                                  className="flex-1"
+                                />
+                                <span className="text-muted-foreground text-xs sm:text-sm">to</span>
+                                <Input
+                                  type="time"
+                                  value={slot.close}
+                                  onChange={(e) => updateTimeSlot(index, "close", e.target.value)}
+                                  className="flex-1"
+                                />
+                              </div>
+                              {timeSlots.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="sm:w-auto w-full"
+                                  onClick={() => removeTimeSlot(index)}
+                                >
+                                  <X className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
                           ))}
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={addTimeSlot}
+                            className="w-full sm:w-auto"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Add Time Slot
+                          </Button>
                         </div>
                       )}
-                      {selectedOverride.reason && (
-                        <div className="text-sm text-muted-foreground">
-                          <span className="font-medium">Reason: </span>
-                          {selectedOverride.reason}
-                        </div>
-                      )}
+
+                      <div className="space-y-2">
+                        <Label htmlFor="quick-reason" className="text-sm">Reason (Optional)</Label>
+                        <Textarea
+                          id="quick-reason"
+                          value={reason}
+                          onChange={(e) => setReason(e.target.value)}
+                          placeholder="e.g., Christmas Holiday, Black Friday Sale"
+                          rows={2}
+                          className="text-sm"
+                        />
+                      </div>
+
+                      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+                        <Button
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                          disabled={isSaving}
+                          size="sm"
+                          className="w-full sm:w-auto"
+                        >
+                          Cancel
+                        </Button>
+                        <Button
+                          onClick={handleSave}
+                          disabled={isSaving}
+                          size="sm"
+                          className="w-full sm:w-auto"
+                        >
+                          <Save className="h-3 w-3 mr-1" />
+                          {isSaving ? "Saving..." : "Save"}
+                        </Button>
+                      </div>
                     </div>
                   ) : (
-                    <div className="text-sm text-muted-foreground">
-                      Regular operating hours apply
+                    <div>
+                      {selectedOverride ? (
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={selectedOverride.override_type === "closed" ? "destructive" : "secondary"}>
+                              {selectedOverride.override_type === "closed" ? "Closed" : "Custom Hours"}
+                            </Badge>
+                          </div>
+                          {selectedOverride.override_type === "custom_hours" && selectedOverride.time_slots.length > 0 && (
+                            <div className="text-sm">
+                              <span className="font-medium">Hours: </span>
+                              {selectedOverride.time_slots.map((slot: any, idx: number) => (
+                                <span key={idx}>
+                                  {slot.open} - {slot.close}
+                                  {idx < selectedOverride.time_slots.length - 1 && ", "}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                          {selectedOverride.reason && (
+                            <div className="text-sm text-muted-foreground">
+                              <span className="font-medium">Reason: </span>
+                              {selectedOverride.reason}
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-muted-foreground">
+                          Regular operating hours apply
+                        </div>
+                      )}
                     </div>
                   )}
-                </div>
-              )}
+                </TabsContent>
+
+                <TabsContent value="staff" className="space-y-4 mt-4">
+                  {(() => {
+                    const dateStr = format(selectedDate, "yyyy-MM-dd");
+                    const selectedDateAssignments = staffAssignments.filter(a => a.date === dateStr);
+                    
+                    return (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Users className="h-4 w-4" />
+                            <span className="text-sm font-medium">{selectedDateAssignments.length} staff assigned</span>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => {
+                              setShowStaffForm(true);
+                              resetStaffForm();
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Assign Staff
+                          </Button>
+                        </div>
+
+                        {selectedDateAssignments.length > 0 && (
+                          <div className="space-y-2">
+                            {selectedDateAssignments.map((assignment) => (
+                              <Card key={assignment.id} className="p-3 sm:p-4">
+                                <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
+                                  <div className="space-y-1 flex-1">
+                                    <p className="font-medium text-sm">
+                                      {assignment.staff.first_name} {assignment.staff.last_name}
+                                    </p>
+                                    <div className="space-y-1">
+                                      {assignment.time_slots.map((slot: StaffTimeSlot, idx: number) => (
+                                        <p key={idx} className="text-xs text-muted-foreground">
+                                          {slot.start} - {slot.end}
+                                        </p>
+                                      ))}
+                                    </div>
+                                    {assignment.reason && (
+                                      <Badge variant="outline" className="mt-2 text-xs">
+                                        {assignment.reason}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="self-end sm:self-start"
+                                    onClick={() => handleDeleteStaffAssignment(assignment.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+
+                        {showStaffForm && (
+                          <div className="space-y-4 p-3 sm:p-4 bg-muted/50 rounded-lg border">
+                            <div className="space-y-2">
+                              <Label className="text-sm">Select Staff</Label>
+                              <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                                <SelectTrigger className="text-sm">
+                                  <SelectValue placeholder="Choose a staff member" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {availableStaff.map((staff) => (
+                                    <SelectItem key={staff.id} value={staff.id} className="text-sm">
+                                      {staff.first_name} {staff.last_name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label className="text-sm">Working Hours</Label>
+                              {staffTimeSlots.map((slot, index) => (
+                                <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <Input
+                                      type="time"
+                                      value={slot.start}
+                                      onChange={(e) => updateStaffTimeSlot(index, "start", e.target.value)}
+                                      className="flex-1 text-sm"
+                                    />
+                                    <span className="text-xs sm:text-sm text-muted-foreground">to</span>
+                                    <Input
+                                      type="time"
+                                      value={slot.end}
+                                      onChange={(e) => updateStaffTimeSlot(index, "end", e.target.value)}
+                                      className="flex-1 text-sm"
+                                    />
+                                  </div>
+                                  {staffTimeSlots.length > 1 && (
+                                    <Button
+                                      type="button"
+                                      variant="ghost"
+                                      size="icon"
+                                      className="sm:w-auto w-full"
+                                      onClick={() => removeStaffTimeSlot(index)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ))}
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={addStaffTimeSlot}
+                                className="w-full sm:w-auto"
+                              >
+                                <Plus className="h-3 w-3 mr-1" />
+                                Add Time Slot
+                              </Button>
+                            </div>
+
+                            <div className="space-y-2">
+                              <Label htmlFor="staff-reason" className="text-sm">Reason (Optional)</Label>
+                              <Textarea
+                                id="staff-reason"
+                                value={staffReason}
+                                onChange={(e) => setStaffReason(e.target.value)}
+                                placeholder="e.g., Extra coverage needed"
+                                rows={2}
+                                className="text-sm"
+                              />
+                            </div>
+
+                            <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+                              <Button
+                                variant="outline"
+                                onClick={() => {
+                                  setShowStaffForm(false);
+                                  resetStaffForm();
+                                }}
+                                size="sm"
+                                className="w-full sm:w-auto"
+                              >
+                                Cancel
+                              </Button>
+                              <Button
+                                onClick={handleAssignStaff}
+                                disabled={!selectedStaffId}
+                                size="sm"
+                                className="w-full sm:w-auto"
+                              >
+                                <Users className="h-3 w-3 mr-1" />
+                                Assign Staff
+                              </Button>
+                            </div>
+                          </div>
+                        )}
+
+                        {selectedDateAssignments.length === 0 && !showStaffForm && (
+                          <p className="text-sm text-muted-foreground text-center py-8">
+                            No staff assigned for this date
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                </TabsContent>
+              </Tabs>
             </div>
           )}
         </div>
 
         <AlertDialog open={!!deleteId} onOpenChange={() => setDeleteId(null)}>
-          <AlertDialogContent>
+          <AlertDialogContent className="max-w-[95vw] sm:max-w-lg mx-4">
             <AlertDialogHeader>
-              <AlertDialogTitle>Delete Override?</AlertDialogTitle>
-              <AlertDialogDescription>
+              <AlertDialogTitle className="text-base sm:text-lg">Delete Override?</AlertDialogTitle>
+              <AlertDialogDescription className="text-sm">
                 This will remove the date-specific hours and revert to the regular weekly schedule for this date.
               </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel className="w-full sm:w-auto">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={handleDelete}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
               >
                 Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Staff Conflict Warning Dialog */}
+        <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+          <AlertDialogContent className="max-w-[95vw] sm:max-w-lg mx-4">
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+                <AlertCircle className="h-5 w-5 text-destructive" />
+                Schedule Conflict Detected
+              </AlertDialogTitle>
+              <AlertDialogDescription className="whitespace-pre-line text-sm">
+                {conflictWarning}
+                {"\n\n"}
+                Do you want to proceed with this assignment anyway?
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+              <AlertDialogCancel onClick={() => {
+                setShowConflictDialog(false);
+                setConflictWarning("");
+                setPendingStaffAssignment(null);
+              }} className="w-full sm:w-auto">
+                Cancel
+              </AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmStaffWithConflict} className="w-full sm:w-auto">
+                Proceed Anyway
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
