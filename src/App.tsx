@@ -8,6 +8,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import BranchDashboard from "./pages/BranchDashboard";
 import BranchDetail from "./pages/BranchDetail";
+import Branches from "./pages/Branches";
 import Services from "./pages/Services";
 import StaffManagement from "./pages/StaffManagement";
 import StaffCalendar from "./pages/StaffCalendar";
@@ -40,6 +41,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <BranchDetail />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/branches"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Branches />
                 </AppLayout>
               </ProtectedRoute>
             }

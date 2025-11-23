@@ -20,6 +20,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Branch Management", url: "/branches", icon: Building2 },
   { title: "Services", url: "/services", icon: Package },
   { title: "Staff", url: "/staff", icon: Users },
   { title: "Staff Calendar", url: "/calendar", icon: Calendar },
