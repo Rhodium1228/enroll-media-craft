@@ -5,6 +5,7 @@ import { Progress } from "@/components/ui/progress";
 import { ArrowLeft, ArrowRight, Check, X, Save } from "lucide-react";
 import { BasicDetailsStep } from "./steps/BasicDetailsStep";
 import { MediaUploadStep } from "./steps/MediaUploadStep";
+import ServicesStep from "./steps/ServicesStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { DraftDialog } from "./DraftDialog";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Service } from "./steps/ServicesStep";
 
 interface BranchData {
   name: string;
@@ -32,6 +34,7 @@ interface BranchData {
   hero_file?: File;
   gallery_files: File[];
   compliance_files: File[];
+  services: Service[];
 }
 
 interface BranchEnrolmentWizardProps {
@@ -61,6 +64,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
     appointment_padding: 15,
     gallery_files: [],
     compliance_files: [],
+    services: [],
   });
 
   // Check for draft on mount
@@ -163,7 +167,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
     }
   };
 
-  const totalSteps = 3;
+  const totalSteps = 4;
   const progress = (currentStep / totalSteps) * 100;
 
   const updateBranchData = (data: Partial<BranchData>) => {
@@ -180,6 +184,19 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
     if (currentStep === 2) {
       if (!branchData.logo_file || !branchData.hero_file) {
         toast.error("Logo and hero image are required");
+        return;
+      }
+    }
+    if (currentStep === 3) {
+      if (branchData.services.length === 0) {
+        toast.error("Please add at least one service");
+        return;
+      }
+      const invalidService = branchData.services.find(
+        (s) => !s.title || s.duration <= 0 || s.cost <= 0
+      );
+      if (invalidService) {
+        toast.error("Please fill in all service details");
         return;
       }
     }
@@ -276,8 +293,25 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
         complianceUrls.push(url);
       }
 
+      // Upload service images
+      const servicesWithUrls = await Promise.all(
+        branchData.services.map(async (service) => {
+          let imageUrl = null;
+          if (service.image) {
+            const servicePath = `${user.id}/${Date.now()}-${service.image.name}`;
+            imageUrl = await uploadFile(service.image, "service-images", servicePath, "gallery");
+          }
+          return {
+            title: service.title,
+            duration: service.duration,
+            cost: service.cost,
+            image_url: imageUrl,
+          };
+        })
+      );
+
       // Create branch record
-      const { error: insertError } = await supabase
+      const { data: branch, error: insertError } = await supabase
         .from("branches")
         .insert({
           name: branchData.name,
@@ -292,9 +326,23 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
           gallery: galleryUrls,
           compliance_docs: complianceUrls,
           created_by: user.id,
-        });
+        })
+        .select()
+        .single();
 
       if (insertError) throw insertError;
+
+      // Insert services
+      if (servicesWithUrls.length > 0 && branch) {
+        const { error: servicesError } = await supabase.from("services").insert(
+          servicesWithUrls.map((service) => ({
+            ...service,
+            branch_id: branch.id,
+          }))
+        );
+
+        if (servicesError) throw servicesError;
+      }
 
       localStorage.removeItem("branch_draft");
       toast.success("Branch enrolled successfully!");
@@ -410,7 +458,13 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
             {currentStep === 2 && (
               <MediaUploadStep data={branchData} updateData={updateBranchData} />
             )}
-            {currentStep === 3 && <ReviewStep data={branchData} />}
+            {currentStep === 3 && (
+              <ServicesStep
+                services={branchData.services}
+                onChange={(services) => updateBranchData({ services })}
+              />
+            )}
+            {currentStep === 4 && <ReviewStep data={branchData} />}
 
             <div className="flex justify-between mt-8 pt-6 border-t">
               <Button
@@ -425,7 +479,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
 
               {currentStep < totalSteps ? (
                 <Button onClick={handleNext} className="gap-2">
-                  Next
+                  {currentStep === 3 ? "Review" : "Next"}
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               ) : (
