@@ -59,7 +59,15 @@ export default function BranchDetail() {
         .eq("id", branchId)
         .single();
 
-      if (branchError) throw branchError;
+      if (branchError) {
+        console.error("Branch fetch error:", branchError);
+        throw branchError;
+      }
+      
+      if (!branchData) {
+        throw new Error("Branch not found");
+      }
+      
       setBranch(branchData);
 
       const { data: servicesData, error: servicesError } = await supabase
@@ -68,15 +76,24 @@ export default function BranchDetail() {
         .eq("branch_id", branchId)
         .order("title");
 
-      if (servicesError) throw servicesError;
-      setServices(servicesData || []);
+      if (servicesError) {
+        console.error("Services fetch error:", servicesError);
+        // Don't throw on services error, just show empty services
+        setServices([]);
+      } else {
+        setServices(servicesData || []);
+      }
     } catch (error: any) {
+      console.error("Branch detail error:", error);
       toast({
-        title: "Error",
-        description: error.message,
+        title: "Error Loading Branch",
+        description: error.message || "Failed to load branch details",
         variant: "destructive",
       });
-      navigate("/dashboard");
+      // Delay redirect to let user see the error
+      setTimeout(() => {
+        navigate("/dashboard");
+      }, 2000);
     } finally {
       setLoading(false);
     }
