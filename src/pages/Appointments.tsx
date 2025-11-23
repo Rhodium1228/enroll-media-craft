@@ -1,0 +1,356 @@
+import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { format, addDays, subDays, startOfMonth, endOfMonth, addWeeks, subWeeks } from "date-fns";
+import { AppointmentTimelineView } from "@/components/appointments/AppointmentTimelineView";
+import { AppointmentWeekView } from "@/components/appointments/AppointmentWeekView";
+import { AppointmentDialog } from "@/components/appointments/AppointmentDialog";
+import { AppointmentCard } from "@/components/appointments/AppointmentCard";
+import { AppointmentWithDetails } from "@/lib/appointmentUtils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+export default function Appointments() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  const [activeView, setActiveView] = useState<"day" | "week" | "month">("day");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const [branches, setBranches] = useState<Array<{ id: string; name: string }>>([]);
+  const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
+
+  useEffect(() => {
+    fetchBranches();
+    fetchAppointments();
+
+    // Real-time subscription
+    const channel = supabase
+      .channel('appointments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+        },
+        () => {
+          fetchAppointments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedDate, activeView, selectedBranch]);
+
+  const fetchBranches = async () => {
+    const { data, error } = await supabase
+      .from("branches")
+      .select("id, name")
+      .eq("status", "active");
+
+    if (!error && data) {
+      setBranches(data);
+    }
+  };
+
+  const fetchAppointments = async () => {
+    setLoading(true);
+
+    let query = supabase
+      .from("appointments")
+      .select(`
+        *,
+        staff:staff_id (
+          id,
+          first_name,
+          last_name,
+          profile_image_url
+        ),
+        service:service_id (
+          id,
+          title,
+          duration,
+          cost
+        ),
+        branch:branch_id (
+          id,
+          name
+        )
+      `);
+
+    // Filter by date range based on view
+    if (activeView === "day") {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      query = query.eq("date", dateStr);
+    } else if (activeView === "week") {
+      const weekStart = format(subDays(selectedDate, selectedDate.getDay()), "yyyy-MM-dd");
+      const weekEnd = format(addDays(selectedDate, 6 - selectedDate.getDay()), "yyyy-MM-dd");
+      query = query.gte("date", weekStart).lte("date", weekEnd);
+    } else if (activeView === "month") {
+      const monthStart = format(startOfMonth(selectedDate), "yyyy-MM-dd");
+      const monthEnd = format(endOfMonth(selectedDate), "yyyy-MM-dd");
+      query = query.gte("date", monthStart).lte("date", monthEnd);
+    }
+
+    // Filter by branch if selected
+    if (selectedBranch !== "all") {
+      query = query.eq("branch_id", selectedBranch);
+    }
+
+    const { data, error } = await query.order("start_time");
+
+    setLoading(false);
+
+    if (error) {
+      toast({ title: "Error loading appointments", variant: "destructive" });
+      return;
+    }
+
+    setAppointments(data as AppointmentWithDetails[]);
+  };
+
+  const handlePrevious = () => {
+    if (activeView === "day") {
+      setSelectedDate(subDays(selectedDate, 1));
+    } else if (activeView === "week") {
+      setSelectedDate(subWeeks(selectedDate, 1));
+    } else {
+      setSelectedDate(subDays(selectedDate, 30));
+    }
+  };
+
+  const handleNext = () => {
+    if (activeView === "day") {
+      setSelectedDate(addDays(selectedDate, 1));
+    } else if (activeView === "week") {
+      setSelectedDate(addWeeks(selectedDate, 1));
+    } else {
+      setSelectedDate(addDays(selectedDate, 30));
+    }
+  };
+
+  const handleToday = () => {
+    setSelectedDate(new Date());
+  };
+
+  const handleDeleteAppointment = async () => {
+    if (!appointmentToDelete) return;
+
+    const { error } = await supabase
+      .from("appointments")
+      .delete()
+      .eq("id", appointmentToDelete);
+
+    if (error) {
+      toast({ title: "Error deleting appointment", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Appointment deleted" });
+    setDeleteDialogOpen(false);
+    setAppointmentToDelete(null);
+    fetchAppointments();
+  };
+
+  const handleUpdateStatus = async (appointmentId: string, status: AppointmentWithDetails['status']) => {
+    const { error } = await supabase
+      .from("appointments")
+      .update({ status })
+      .eq("id", appointmentId);
+
+    if (error) {
+      toast({ title: "Error updating appointment", variant: "destructive" });
+      return;
+    }
+
+    toast({ title: "Appointment updated" });
+    fetchAppointments();
+  };
+
+  return (
+    <div className="min-h-screen bg-background p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Appointments</h1>
+              <p className="text-muted-foreground">
+                Manage appointments and bookings
+              </p>
+            </div>
+          </div>
+          <Button onClick={() => setDialogOpen(true)}>
+            <CalendarPlus className="h-4 w-4 mr-2" />
+            New Appointment
+          </Button>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-wrap items-center gap-4">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={handlePrevious}>
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="outline" onClick={handleToday}>
+              Today
+            </Button>
+            <Button variant="outline" size="icon" onClick={handleNext}>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+
+          <div className="font-semibold">
+            {activeView === "day" && format(selectedDate, "EEEE, MMMM d, yyyy")}
+            {activeView === "week" && `Week of ${format(selectedDate, "MMM d, yyyy")}`}
+            {activeView === "month" && format(selectedDate, "MMMM yyyy")}
+          </div>
+
+          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="All branches" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All branches</SelectItem>
+              {branches.map((branch) => (
+                <SelectItem key={branch.id} value={branch.id}>
+                  {branch.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Views */}
+        <Tabs value={activeView} onValueChange={(v) => setActiveView(v as any)}>
+          <TabsList>
+            <TabsTrigger value="day">Day</TabsTrigger>
+            <TabsTrigger value="week">Week</TabsTrigger>
+            <TabsTrigger value="month">Month</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="day" className="mt-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-64">Loading...</div>
+            ) : (
+              <AppointmentTimelineView
+                appointments={appointments}
+                date={selectedDate}
+                onAppointmentClick={(apt) => console.log("View appointment", apt)}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="week" className="mt-6">
+            {loading ? (
+              <div className="flex items-center justify-center h-64">Loading...</div>
+            ) : (
+              <AppointmentWeekView
+                appointments={appointments}
+                currentDate={selectedDate}
+                onAppointmentClick={(apt) => console.log("View appointment", apt)}
+                onDayClick={(date) => {
+                  setSelectedDate(date);
+                  setActiveView("day");
+                }}
+              />
+            )}
+          </TabsContent>
+
+          <TabsContent value="month" className="mt-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div>
+                <Calendar
+                  mode="single"
+                  selected={selectedDate}
+                  onSelect={(date) => date && setSelectedDate(date)}
+                  className="rounded-md border"
+                />
+              </div>
+              <div className="space-y-4">
+                <h3 className="font-semibold">
+                  Appointments for {format(selectedDate, "MMMM d, yyyy")}
+                </h3>
+                {loading ? (
+                  <div className="flex items-center justify-center h-32">Loading...</div>
+                ) : (
+                  <div className="space-y-2 max-h-96 overflow-y-auto">
+                    {appointments
+                      .filter((apt) => apt.date === format(selectedDate, "yyyy-MM-dd"))
+                      .map((appointment) => (
+                        <AppointmentCard
+                          key={appointment.id}
+                          appointment={appointment}
+                          onDelete={(id) => {
+                            setAppointmentToDelete(id);
+                            setDeleteDialogOpen(true);
+                          }}
+                          onUpdateStatus={handleUpdateStatus}
+                        />
+                      ))}
+                    {appointments.filter((apt) => apt.date === format(selectedDate, "yyyy-MM-dd")).length === 0 && (
+                      <p className="text-sm text-muted-foreground text-center py-8">
+                        No appointments for this date
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </div>
+
+      <AppointmentDialog
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onSuccess={fetchAppointments}
+        prefilledDate={selectedDate}
+      />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Appointment</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this appointment? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteAppointment}>Delete</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}
