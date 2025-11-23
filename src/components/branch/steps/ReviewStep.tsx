@@ -1,6 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Building2, Mail, MapPin, Phone, Clock, Image, FileText } from "lucide-react";
+import { Building2, Mail, MapPin, Phone, Clock, Image, FileText, DollarSign } from "lucide-react";
+import { Service } from "./ServicesStep";
 
 interface ReviewStepProps {
   data: {
@@ -14,6 +15,7 @@ interface ReviewStepProps {
     hero_file?: File;
     gallery_files: File[];
     compliance_files: File[];
+    services: Service[];
   };
 }
 
@@ -125,6 +127,44 @@ export const ReviewStep = ({ data }: ReviewStepProps) => {
           <div className="flex items-center justify-between">
             <span className="text-sm text-muted-foreground">Documents</span>
             <Badge variant="outline">{data.compliance_files.length} files</Badge>
+          </div>
+        </div>
+
+        <div className="bg-accent/20 rounded-lg p-6 space-y-4">
+          <div className="flex items-center gap-2 mb-4">
+            <Image className="w-5 h-5 text-primary" />
+            <h4 className="font-semibold">Services ({data.services.length})</h4>
+          </div>
+
+          <div className="grid gap-4">
+            {data.services.map((service) => (
+              <div
+                key={service.id}
+                className="flex items-start gap-4 p-4 rounded-lg border bg-background"
+              >
+                {service.imagePreview ? (
+                  <img
+                    src={service.imagePreview}
+                    alt={service.title}
+                    className="w-24 h-24 object-cover rounded-lg"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-muted rounded-lg flex items-center justify-center">
+                    <span className="text-muted-foreground text-xs">No image</span>
+                  </div>
+                )}
+                <div className="flex-1 space-y-1">
+                  <h4 className="font-semibold">{service.title}</h4>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span>{service.duration} minutes</span>
+                    <Badge variant="secondary" className="gap-1">
+                      <DollarSign className="h-3 w-3" />
+                      {service.cost.toFixed(2)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>

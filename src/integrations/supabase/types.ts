@@ -71,6 +71,47 @@ export type Database = {
         }
         Relationships: []
       }
+      services: {
+        Row: {
+          branch_id: string
+          cost: number
+          created_at: string
+          duration: number
+          id: string
+          image_url: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          cost: number
+          created_at?: string
+          duration: number
+          id?: string
+          image_url?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          cost?: number
+          created_at?: string
+          duration?: number
+          id?: string
+          image_url?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "services_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
