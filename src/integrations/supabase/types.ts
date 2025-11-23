@@ -137,7 +137,7 @@ export type Database = {
           appointment_padding: number | null
           compliance_docs: Json | null
           created_at: string
-          created_by: string | null
+          created_by: string
           email: string
           gallery: Json | null
           hero_image_url: string | null
@@ -155,7 +155,7 @@ export type Database = {
           appointment_padding?: number | null
           compliance_docs?: Json | null
           created_at?: string
-          created_by?: string | null
+          created_by: string
           email: string
           gallery?: Json | null
           hero_image_url?: string | null
@@ -173,7 +173,7 @@ export type Database = {
           appointment_padding?: number | null
           compliance_docs?: Json | null
           created_at?: string
-          created_by?: string | null
+          created_by?: string
           email?: string
           gallery?: Json | null
           hero_image_url?: string | null
