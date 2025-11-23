@@ -1,13 +1,24 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, X, Save } from "lucide-react";
 import { BasicDetailsStep } from "./steps/BasicDetailsStep";
 import { MediaUploadStep } from "./steps/MediaUploadStep";
 import { ReviewStep } from "./steps/ReviewStep";
+import { DraftDialog } from "./DraftDialog";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface BranchData {
   name: string;
@@ -30,6 +41,16 @@ interface BranchEnrolmentWizardProps {
 export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showDraftDialog, setShowDraftDialog] = useState(false);
+  const [draftTimestamp, setDraftTimestamp] = useState<number>(0);
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<{
+    logo: number;
+    hero: number;
+    gallery: number;
+    compliance: number;
+  }>({ logo: 0, hero: 0, gallery: 0, compliance: 0 });
+
   const [branchData, setBranchData] = useState<BranchData>({
     name: "",
     address: "",
@@ -41,6 +62,106 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
     gallery_files: [],
     compliance_files: [],
   });
+
+  // Check for draft on mount
+  useEffect(() => {
+    const draft = localStorage.getItem("branch_draft");
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setDraftTimestamp(parsed.timestamp);
+        setShowDraftDialog(true);
+      } catch (e) {
+        console.error("Failed to parse draft:", e);
+        localStorage.removeItem("branch_draft");
+      }
+    }
+  }, []);
+
+  // Auto-save to localStorage every 30 seconds
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (branchData.name || branchData.address) {
+        const draft = {
+          data: {
+            ...branchData,
+            logo_file: undefined,
+            hero_file: undefined,
+            gallery_files: [],
+            compliance_files: [],
+          },
+          currentStep,
+          timestamp: Date.now(),
+        };
+        localStorage.setItem("branch_draft", JSON.stringify(draft));
+      }
+    }, 30000);
+
+    return () => clearInterval(interval);
+  }, [branchData, currentStep]);
+
+  // Warn before closing with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (branchData.name || branchData.address) {
+        e.preventDefault();
+        e.returnValue = "You have unsaved changes!";
+      }
+    };
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    return () => window.removeEventListener("beforeunload", handleBeforeUnload);
+  }, [branchData]);
+
+  const handleResumeDraft = () => {
+    const draft = localStorage.getItem("branch_draft");
+    if (draft) {
+      try {
+        const parsed = JSON.parse(draft);
+        setBranchData((prev) => ({ ...prev, ...parsed.data }));
+        setCurrentStep(parsed.currentStep);
+        toast.success("Draft restored successfully");
+      } catch (e) {
+        toast.error("Failed to restore draft");
+      }
+    }
+    setShowDraftDialog(false);
+  };
+
+  const handleDiscardDraft = () => {
+    localStorage.removeItem("branch_draft");
+    setShowDraftDialog(false);
+  };
+
+  const handleSaveAsDraft = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error("You must be logged in to save a draft");
+        return;
+      }
+
+      const { error } = await supabase.from("branches").insert({
+        name: branchData.name || "Untitled Draft",
+        address: branchData.address || "",
+        timezone: branchData.timezone,
+        phone: branchData.phone || "",
+        email: branchData.email || "",
+        open_hours: branchData.open_hours,
+        appointment_padding: branchData.appointment_padding,
+        status: "draft",
+        created_by: user.id,
+      });
+
+      if (error) throw error;
+
+      localStorage.removeItem("branch_draft");
+      toast.success("Draft saved to database");
+      onClose();
+    } catch (error: any) {
+      console.error("Error saving draft:", error);
+      toast.error(error.message || "Failed to save draft");
+    }
+  };
 
   const totalSteps = 3;
   const progress = (currentStep / totalSteps) * 100;
@@ -73,25 +194,41 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
     }
   };
 
-  const uploadFile = async (file: File, bucket: string, path: string): Promise<string> => {
-    const { data, error } = await supabase.storage
-      .from(bucket)
-      .upload(path, file, {
-        cacheControl: "3600",
-        upsert: false,
-      });
+  const uploadFile = async (
+    file: File,
+    bucket: string,
+    path: string,
+    progressKey: keyof typeof uploadProgress
+  ): Promise<string> => {
+    try {
+      setUploadProgress((prev) => ({ ...prev, [progressKey]: 10 }));
 
-    if (error) throw error;
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: "3600",
+          upsert: false,
+        });
 
-    const { data: urlData } = supabase.storage
-      .from(bucket)
-      .getPublicUrl(data.path);
+      if (error) throw error;
 
-    return urlData.publicUrl;
+      setUploadProgress((prev) => ({ ...prev, [progressKey]: 100 }));
+
+      const { data: urlData } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(data.path);
+
+      return urlData.publicUrl;
+    } catch (error) {
+      setUploadProgress((prev) => ({ ...prev, [progressKey]: 0 }));
+      throw error;
+    }
   };
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
+    setUploadProgress({ logo: 0, hero: 0, gallery: 0, compliance: 0 });
+
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
@@ -103,29 +240,39 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
       let logoUrl = "";
       if (branchData.logo_file) {
         const logoPath = `${user.id}/${Date.now()}-${branchData.logo_file.name}`;
-        logoUrl = await uploadFile(branchData.logo_file, "branch-logos", logoPath);
+        logoUrl = await uploadFile(branchData.logo_file, "branch-logos", logoPath, "logo");
       }
 
       // Upload hero image
       let heroUrl = "";
       if (branchData.hero_file) {
         const heroPath = `${user.id}/${Date.now()}-${branchData.hero_file.name}`;
-        heroUrl = await uploadFile(branchData.hero_file, "branch-heroes", heroPath);
+        heroUrl = await uploadFile(branchData.hero_file, "branch-heroes", heroPath, "hero");
       }
 
       // Upload gallery images
       const galleryUrls = [];
-      for (const file of branchData.gallery_files) {
+      for (let i = 0; i < branchData.gallery_files.length; i++) {
+        const file = branchData.gallery_files[i];
         const galleryPath = `${user.id}/${Date.now()}-${file.name}`;
-        const url = await uploadFile(file, "branch-gallery", galleryPath);
+        setUploadProgress((prev) => ({
+          ...prev,
+          gallery: Math.round(((i + 1) / branchData.gallery_files.length) * 100),
+        }));
+        const url = await uploadFile(file, "branch-gallery", galleryPath, "gallery");
         galleryUrls.push(url);
       }
 
       // Upload compliance documents
       const complianceUrls = [];
-      for (const file of branchData.compliance_files) {
+      for (let i = 0; i < branchData.compliance_files.length; i++) {
+        const file = branchData.compliance_files[i];
         const compliancePath = `${user.id}/${Date.now()}-${file.name}`;
-        const url = await uploadFile(file, "branch-compliance", compliancePath);
+        setUploadProgress((prev) => ({
+          ...prev,
+          compliance: Math.round(((i + 1) / branchData.compliance_files.length) * 100),
+        }));
+        const url = await uploadFile(file, "branch-compliance", compliancePath, "compliance");
         complianceUrls.push(url);
       }
 
@@ -149,6 +296,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
 
       if (insertError) throw insertError;
 
+      localStorage.removeItem("branch_draft");
       toast.success("Branch enrolled successfully!");
       onClose();
     } catch (error: any) {
@@ -156,60 +304,140 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
       toast.error(error.message || "Failed to create branch");
     } finally {
       setIsSubmitting(false);
+      setUploadProgress({ logo: 0, hero: 0, gallery: 0, compliance: 0 });
+    }
+  };
+
+  const handleClose = () => {
+    if (branchData.name || branchData.address) {
+      setShowExitDialog(true);
+    } else {
+      onClose();
     }
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background p-4">
-      <div className="container mx-auto max-w-5xl">
-        <div className="mb-8 flex items-center justify-between">
-          <Button variant="outline" onClick={onClose} className="gap-2">
-            <X className="w-4 h-4" />
-            Cancel
-          </Button>
-          <div className="text-center flex-1 mx-4">
-            <h2 className="text-2xl font-bold">Branch Enrolment</h2>
-            <p className="text-muted-foreground">Step {currentStep} of {totalSteps}</p>
-          </div>
-          <div className="w-24"></div>
-        </div>
+    <>
+      <DraftDialog
+        open={showDraftDialog}
+        draftTimestamp={draftTimestamp}
+        onResume={handleResumeDraft}
+        onDiscard={handleDiscardDraft}
+      />
 
-        <Progress value={progress} className="mb-8" />
+      <AlertDialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unsaved Changes</AlertDialogTitle>
+            <AlertDialogDescription>
+              You have unsaved changes. Would you like to save as a draft before leaving?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={onClose}>Discard</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveAsDraft}>Save Draft</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-        <Card className="p-8 shadow-lg">
-          {currentStep === 1 && (
-            <BasicDetailsStep data={branchData} updateData={updateBranchData} />
-          )}
-          {currentStep === 2 && (
-            <MediaUploadStep data={branchData} updateData={updateBranchData} />
-          )}
-          {currentStep === 3 && <ReviewStep data={branchData} />}
-
-          <div className="flex justify-between mt-8 pt-6 border-t">
-            <Button
-              variant="outline"
-              onClick={handleBack}
-              disabled={currentStep === 1}
-              className="gap-2"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Back
+      <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background p-4">
+        <div className="container mx-auto max-w-5xl">
+          <div className="mb-8 flex items-center justify-between">
+            <Button variant="outline" onClick={handleClose} className="gap-2">
+              <X className="w-4 h-4" />
+              Cancel
             </Button>
-
-            {currentStep < totalSteps ? (
-              <Button onClick={handleNext} className="gap-2">
-                Next
-                <ArrowRight className="w-4 h-4" />
-              </Button>
-            ) : (
-              <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2">
-                <Check className="w-4 h-4" />
-                {isSubmitting ? "Submitting..." : "Submit"}
-              </Button>
-            )}
+            <div className="text-center flex-1 mx-4">
+              <h2 className="text-2xl font-bold">Branch Enrolment</h2>
+              <p className="text-muted-foreground">Step {currentStep} of {totalSteps}</p>
+            </div>
+            <Button variant="outline" onClick={handleSaveAsDraft} className="gap-2">
+              <Save className="w-4 h-4" />
+              Save Draft
+            </Button>
           </div>
-        </Card>
+
+          <Progress value={progress} className="mb-8" />
+
+          {isSubmitting && (
+            <Card className="p-4 mb-4">
+              <div className="space-y-3">
+                <h4 className="font-semibold">Uploading Files...</h4>
+                {uploadProgress.logo > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Logo</span>
+                      <span>{uploadProgress.logo}%</span>
+                    </div>
+                    <Progress value={uploadProgress.logo} />
+                  </div>
+                )}
+                {uploadProgress.hero > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Hero Image</span>
+                      <span>{uploadProgress.hero}%</span>
+                    </div>
+                    <Progress value={uploadProgress.hero} />
+                  </div>
+                )}
+                {uploadProgress.gallery > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Gallery Images</span>
+                      <span>{uploadProgress.gallery}%</span>
+                    </div>
+                    <Progress value={uploadProgress.gallery} />
+                  </div>
+                )}
+                {uploadProgress.compliance > 0 && (
+                  <div>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Compliance Documents</span>
+                      <span>{uploadProgress.compliance}%</span>
+                    </div>
+                    <Progress value={uploadProgress.compliance} />
+                  </div>
+                )}
+              </div>
+            </Card>
+          )}
+
+          <Card className="p-8 shadow-lg">
+            {currentStep === 1 && (
+              <BasicDetailsStep data={branchData} updateData={updateBranchData} />
+            )}
+            {currentStep === 2 && (
+              <MediaUploadStep data={branchData} updateData={updateBranchData} />
+            )}
+            {currentStep === 3 && <ReviewStep data={branchData} />}
+
+            <div className="flex justify-between mt-8 pt-6 border-t">
+              <Button
+                variant="outline"
+                onClick={handleBack}
+                disabled={currentStep === 1}
+                className="gap-2"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Back
+              </Button>
+
+              {currentStep < totalSteps ? (
+                <Button onClick={handleNext} className="gap-2">
+                  Next
+                  <ArrowRight className="w-4 h-4" />
+                </Button>
+              ) : (
+                <Button onClick={handleSubmit} disabled={isSubmitting} className="gap-2">
+                  <Check className="w-4 h-4" />
+                  {isSubmitting ? "Submitting..." : "Submit"}
+                </Button>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
