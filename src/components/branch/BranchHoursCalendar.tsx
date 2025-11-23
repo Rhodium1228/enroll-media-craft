@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2, CheckSquare, Square } from "lucide-react";
+import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths, addDays, isWeekend, isBefore, startOfDay } from "date-fns";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2, CheckSquare, Square, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -172,6 +172,31 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
 
   const isDateSelected = (date: Date): boolean => {
     return selectedDates.some(d => isSameDay(d, date));
+  };
+
+  const selectAllWeekends = () => {
+    const weekendDates = daysInMonth.filter(day => isWeekend(day));
+    // Add weekends that aren't already selected
+    const newSelections = weekendDates.filter(day => !isDateSelected(day));
+    setSelectedDates([...selectedDates, ...newSelections]);
+    toast.success(`Added ${newSelections.length} weekend date(s) to selection`);
+  };
+
+  const selectNext7Days = () => {
+    const today = startOfDay(new Date());
+    const next7Days = Array.from({ length: 7 }, (_, i) => addDays(today, i))
+      .filter(day => !isBefore(day, today)); // Only future or today
+    // Add dates that aren't already selected
+    const newSelections = next7Days.filter(day => !isDateSelected(day));
+    setSelectedDates([...selectedDates, ...newSelections]);
+    toast.success(`Added ${newSelections.length} date(s) to selection`);
+  };
+
+  const selectThisMonth = () => {
+    // Add all days in current month that aren't already selected
+    const newSelections = daysInMonth.filter(day => !isDateSelected(day));
+    setSelectedDates([...selectedDates, ...newSelections]);
+    toast.success(`Added ${newSelections.length} date(s) to selection`);
   };
 
   const loadOverrideIntoForm = (override: BranchOverride | undefined) => {
@@ -485,6 +510,39 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
               <span className="text-xs text-muted-foreground">Closed</span>
             </div>
           </div>
+
+          {/* Quick Selection Shortcuts */}
+          {isMultiSelectMode && (
+            <div className="pt-4 border-t">
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Quick Selection</span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectAllWeekends}
+                >
+                  Select All Weekends
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectNext7Days}
+                >
+                  Select Next 7 Days
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={selectThisMonth}
+                >
+                  Select This Month
+                </Button>
+              </div>
+            </div>
+          )}
 
           {/* Multi-Select Override Form */}
           {isMultiSelectMode && selectedDates.length > 0 && (
