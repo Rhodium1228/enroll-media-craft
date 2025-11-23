@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AppLayout } from "@/components/AppLayout";
 import Index from "./pages/Index";
 import BranchDashboard from "./pages/BranchDashboard";
 import BranchDetail from "./pages/BranchDetail";
@@ -20,10 +21,38 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
-          <Route path="/dashboard" element={<BranchDashboard />} />
-          <Route path="/branch/:branchId" element={<BranchDetail />} />
-          <Route path="/calendar" element={<StaffCalendar />} />
-          <Route path="/appointments" element={<Appointments />} />
+          <Route
+            path="/dashboard"
+            element={
+              <AppLayout>
+                <BranchDashboard />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/branch/:branchId"
+            element={
+              <AppLayout>
+                <BranchDetail />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/calendar"
+            element={
+              <AppLayout>
+                <StaffCalendar />
+              </AppLayout>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <AppLayout>
+                <Appointments />
+              </AppLayout>
+            }
+          />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
