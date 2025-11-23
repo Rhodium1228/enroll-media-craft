@@ -334,11 +334,16 @@ export default function StaffEnrollmentDialog({
       // Update staff_branches
       const { error: branchError } = await supabase
         .from("staff_branches")
-        .upsert({
-          staff_id: staffId,
-          branch_id: branchId,
-          working_hours: workingHours,
-        });
+        .upsert(
+          {
+            staff_id: staffId,
+            branch_id: branchId,
+            working_hours: workingHours,
+          },
+          {
+            onConflict: "staff_id,branch_id",
+          }
+        );
 
       if (branchError) throw branchError;
 
