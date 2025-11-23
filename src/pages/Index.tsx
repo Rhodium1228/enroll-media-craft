@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { BranchEnrolmentWizard } from "@/components/branch/BranchEnrolmentWizard";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { Button } from "@/components/ui/button";
-import { Building2, Plus, LogOut, LayoutDashboard } from "lucide-react";
+import { Building2, Plus, LogOut, LayoutDashboard, Calendar, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -75,7 +75,7 @@ const Index = () => {
             </p>
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
             <Button 
               size="lg" 
               onClick={() => navigate("/dashboard")}
@@ -84,6 +84,24 @@ const Index = () => {
             >
               <LayoutDashboard className="w-5 h-5" />
               View My Branches
+            </Button>
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/appointments")}
+              variant="outline"
+              className="gap-2 text-lg px-8 py-6"
+            >
+              <ClipboardList className="w-5 h-5" />
+              Assign Tasks
+            </Button>
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/calendar")}
+              variant="outline"
+              className="gap-2 text-lg px-8 py-6"
+            >
+              <Calendar className="w-5 h-5" />
+              Staff Calendar
             </Button>
             <Button 
               size="lg" 
