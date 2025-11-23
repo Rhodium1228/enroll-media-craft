@@ -58,6 +58,7 @@ export function BranchStaffScheduleCalendar({
   // Fetch assignments for the branch
   useEffect(() => {
     fetchAssignments();
+    fetchAvailableStaff();
     
     // Set up realtime subscription
     const channel = supabase
@@ -70,7 +71,8 @@ export function BranchStaffScheduleCalendar({
           table: 'staff_date_assignments',
           filter: `branch_id=eq.${branchId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Staff assignment change detected:', payload);
           fetchAssignments();
         }
       )
@@ -79,11 +81,6 @@ export function BranchStaffScheduleCalendar({
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [branchId]);
-
-  // Fetch available staff for the branch
-  useEffect(() => {
-    fetchAvailableStaff();
   }, [branchId]);
 
   const fetchAssignments = async () => {
