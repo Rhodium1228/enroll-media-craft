@@ -234,6 +234,54 @@ export type Database = {
           },
         ]
       }
+      staff_date_assignments: {
+        Row: {
+          branch_id: string
+          created_at: string
+          date: string
+          id: string
+          reason: string | null
+          staff_id: string
+          time_slots: Json
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          date: string
+          id?: string
+          reason?: string | null
+          staff_id: string
+          time_slots?: Json
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          date?: string
+          id?: string
+          reason?: string | null
+          staff_id?: string
+          time_slots?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_date_assignments_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_date_assignments_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_leave_requests: {
         Row: {
           created_at: string
