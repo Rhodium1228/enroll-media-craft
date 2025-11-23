@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Upload, X, AlertTriangle } from "lucide-react";
-import StaffScheduleBuilder from "./StaffScheduleBuilder";
+import StaffBranchDateAssignments from "./StaffBranchDateAssignments";
 import browserImageCompression from "browser-image-compression";
 import { detectScheduleConflicts, groupConflictsByDay } from "@/lib/scheduleConflicts";
 import type { ScheduleConflict } from "@/lib/scheduleConflicts";
@@ -514,68 +514,23 @@ export default function StaffEnrollmentDialog({
 
           <TabsContent value="schedule" className="mt-4">
             <div className="mb-4">
-              <h3 className="font-semibold mb-2">Working Hours for This Branch</h3>
-              <p className="text-sm text-muted-foreground">Set the schedule for when this staff member works at this branch</p>
+              <h3 className="font-semibold mb-2">Date-Specific Assignments</h3>
+              <p className="text-sm text-muted-foreground">Schedule specific dates when this staff member works at this branch</p>
             </div>
 
-            {staff?.id && (
-              <div className="mb-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={async () => {
-                    const conflicts = await checkScheduleConflicts(staff.id);
-                    setScheduleConflicts(conflicts);
-                    if (conflicts.length === 0) {
-                      toast({
-                        title: "No Conflicts",
-                        description: "This schedule doesn't conflict with other branches",
-                      });
-                    }
-                  }}
-                  disabled={checkingConflicts}
-                >
-                  {checkingConflicts ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Checking...
-                    </>
-                  ) : (
-                    "Check for Schedule Conflicts"
-                  )}
-                </Button>
-              </div>
-            )}
-
-            {scheduleConflicts.length > 0 && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertTitle>Schedule Conflicts Detected</AlertTitle>
+            {staff?.id ? (
+              <StaffBranchDateAssignments
+                staffId={staff.id}
+                branchId={branchId}
+                staffName={`${staff.first_name} ${staff.last_name}`}
+              />
+            ) : (
+              <Alert>
                 <AlertDescription>
-                  <div className="mt-2 space-y-2">
-                    {Object.entries(groupConflictsByDay(scheduleConflicts)).map(([day, dayConflicts]) => (
-                      <div key={day}>
-                        <p className="font-semibold capitalize">{day}:</p>
-                        <ul className="list-disc list-inside ml-2 text-sm">
-                          {dayConflicts.map((conflict, idx) => (
-                            <li key={idx}>
-                              <span className="font-medium">{conflict.branch_name}</span> - 
-                              {conflict.conflicting_slots.map((slot, slotIdx) => (
-                                <span key={slotIdx}>
-                                  {" "}{slot.new.start}-{slot.new.end} overlaps with {slot.existing.start}-{slot.existing.end}
-                                </span>
-                              ))}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ))}
-                  </div>
+                  Save the staff member first to manage their schedule
                 </AlertDescription>
               </Alert>
             )}
-
-            <StaffScheduleBuilder value={workingHours} onChange={setWorkingHours} />
           </TabsContent>
 
           <TabsContent value="services" className="mt-4">
