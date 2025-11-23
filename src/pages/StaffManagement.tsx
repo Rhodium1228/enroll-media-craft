@@ -64,16 +64,32 @@ export default function StaffManagement() {
 
   const fetchStaff = async () => {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      
+      if (authError) {
+        console.error("Auth error in fetchStaff:", authError);
+        toast.error("Authentication error. Please sign in again.");
+        return;
+      }
+      
+      if (!user) {
+        console.log("No user in fetchStaff");
+        return;
+      }
 
+      console.log("Fetching staff for user:", user.id);
       const { data, error } = await supabase
         .from("staff")
         .select("*")
         .eq("created_by", user.id)
         .order("created_at", { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error fetching staff:", error);
+        throw error;
+      }
+      
+      console.log("Fetched staff data:", data);
       setStaff(data || []);
 
       // Fetch branches for each staff member
