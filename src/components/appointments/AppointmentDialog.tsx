@@ -102,7 +102,7 @@ export const AppointmentDialog = ({
     const { data, error } = await supabase
       .from("branches")
       .select("id, name")
-      .eq("status", "active");
+      .in("status", ["active", "pending"]);
 
     if (error) {
       toast({ title: "Error loading branches", variant: "destructive" });
