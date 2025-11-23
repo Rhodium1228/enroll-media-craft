@@ -87,54 +87,6 @@ export default function StaffScheduleBuilder({ value, onChange }: StaffScheduleB
 
   return (
     <div className="space-y-6">
-      {/* Configured Days List */}
-      {configuredDays.length > 0 && (
-        <Card>
-          <CardContent className="pt-4">
-            <Label className="text-sm font-medium mb-3 block">Configured Schedule</Label>
-            <div className="space-y-2">
-              {configuredDays.map(({ key, label }) => {
-                const daySchedule = value[key];
-                const isClosed = daySchedule?.closed || false;
-                
-                return (
-                  <div key={key} className="flex items-center justify-between p-3 rounded-lg border bg-muted/50">
-                    <div className="flex-1">
-                      <div className="font-medium">{label}</div>
-                      {isClosed ? (
-                        <Badge variant="secondary" className="mt-1">Closed</Badge>
-                      ) : (
-                        <div className="text-sm text-muted-foreground mt-1">
-                          {daySchedule?.slots.map((slot, i) => (
-                            <span key={i}>
-                              {slot.start} - {slot.end}
-                              {i < daySchedule.slots.length - 1 && ", "}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        const dayDate = DAYS.findIndex(d => d.key === key);
-                        const today = new Date();
-                        const targetDate = new Date(today);
-                        targetDate.setDate(today.getDate() + ((dayDate - today.getDay() + 7) % 7));
-                        setSelectedDate(targetDate);
-                      }}
-                    >
-                      <Edit2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
       {/* Date Selection */}
       <Card>
         <CardContent className="pt-4">
