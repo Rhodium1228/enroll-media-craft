@@ -84,25 +84,28 @@ export function DateStaffAssignmentForm({
       <div className="space-y-2">
         <Label>Working Hours</Label>
         {timeSlots.map((slot, index) => (
-          <div key={index} className="flex items-center gap-2">
-            <Input
-              type="time"
-              value={slot.start}
-              onChange={(e) => handleSlotChange(index, "start", e.target.value)}
-              className="flex-1"
-            />
-            <span className="text-muted-foreground">to</span>
-            <Input
-              type="time"
-              value={slot.end}
-              onChange={(e) => handleSlotChange(index, "end", e.target.value)}
-              className="flex-1"
-            />
+          <div key={index} className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+            <div className="flex items-center gap-2 flex-1">
+              <Input
+                type="time"
+                value={slot.start}
+                onChange={(e) => handleSlotChange(index, "start", e.target.value)}
+                className="flex-1"
+              />
+              <span className="text-xs sm:text-sm text-muted-foreground">to</span>
+              <Input
+                type="time"
+                value={slot.end}
+                onChange={(e) => handleSlotChange(index, "end", e.target.value)}
+                className="flex-1"
+              />
+            </div>
             {timeSlots.length > 1 && (
               <Button
                 type="button"
                 variant="ghost"
                 size="icon"
+                className="sm:w-auto w-full"
                 onClick={() => handleRemoveSlot(index)}
               >
                 <Trash2 className="h-4 w-4" />
@@ -133,11 +136,11 @@ export function DateStaffAssignmentForm({
         />
       </div>
 
-      <div className="flex justify-end gap-2">
-        <Button type="button" variant="outline" onClick={onCancel}>
+      <div className="flex flex-col-reverse sm:flex-row justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel} className="w-full sm:w-auto">
           Cancel
         </Button>
-        <Button type="submit" disabled={!selectedStaffId || isLoading}>
+        <Button type="submit" disabled={!selectedStaffId || isLoading} className="w-full sm:w-auto">
           {isLoading ? "Assigning..." : "Assign Staff"}
         </Button>
       </div>
