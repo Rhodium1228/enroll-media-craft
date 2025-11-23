@@ -1,301 +1,150 @@
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Building2, Users, Package, Plus, LogOut, Calendar, MoreVertical, Trash2 } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+import { Plus, Building2, Users, DollarSign, Calendar, TrendingUp } from "lucide-react";
+import { toast } from "sonner";
+import { StatCard } from "@/components/dashboard/StatCard";
+import { BranchComparisonTable } from "@/components/dashboard/BranchComparisonTable";
+import { TopServicesCard } from "@/components/dashboard/TopServicesCard";
+import { StaffLeaderboard } from "@/components/dashboard/StaffLeaderboard";
+import { CustomerInsights } from "@/components/dashboard/CustomerInsights";
+import { fetchDashboardAnalytics, DashboardAnalytics } from "@/lib/analyticsUtils";
+import { Skeleton } from "@/components/ui/skeleton";
 
-interface Branch {
-  id: string;
-  name: string;
-  address: string;
-  status: string;
-  logo_url: string | null;
-  _count?: {
-    services: number;
-    staff: number;
-  };
-}
-
-export default function BranchDashboard() {
-  const [branches, setBranches] = useState<Branch[]>([]);
+const BranchDashboard = () => {
+  const [analytics, setAnalytics] = useState<DashboardAnalytics | null>(null);
   const [loading, setLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
-  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   useEffect(() => {
-    fetchBranches();
+    fetchAnalytics();
   }, []);
 
-  const fetchBranches = async () => {
+  const fetchAnalytics = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
+      
       if (!user) {
-        navigate("/");
+        navigate('/');
         return;
       }
 
-      const { data: branchesData, error } = await supabase
-        .from("branches")
-        .select("*")
-        .eq("created_by", user.id)
-        .order("created_at", { ascending: false });
-
-      if (error) throw error;
-
-      // Fetch counts for each branch
-      const branchesWithCounts = await Promise.all(
-        (branchesData || []).map(async (branch) => {
-          const { count: servicesCount } = await supabase
-            .from("services")
-            .select("*", { count: "exact", head: true })
-            .eq("branch_id", branch.id);
-
-          const { count: staffCount } = await supabase
-            .from("staff_branches")
-            .select("*", { count: "exact", head: true })
-            .eq("branch_id", branch.id);
-
-          return {
-            ...branch,
-            _count: {
-              services: servicesCount || 0,
-              staff: staffCount || 0,
-            },
-          };
-        })
-      );
-
-      setBranches(branchesWithCounts);
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
+      const data = await fetchDashboardAnalytics(user.id);
+      setAnalytics(data);
+    } catch (error) {
+      console.error('Error fetching analytics:', error);
+      toast.error('Failed to load analytics');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-    navigate("/");
-  };
-
-  const handleDeleteClick = (branch: Branch, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setBranchToDelete(branch);
-    setDeleteDialogOpen(true);
-  };
-
-  const handleConfirmDelete = async () => {
-    if (!branchToDelete) return;
-    
-    setDeleting(true);
-    try {
-      const { error } = await supabase
-        .from("branches")
-        .delete()
-        .eq("id", branchToDelete.id);
-
-      if (error) throw error;
-
-      toast({
-        title: "Success",
-        description: `Branch "${branchToDelete.name}" has been deleted`,
-      });
-
-      // Refresh branch list
-      fetchBranches();
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setDeleting(false);
-      setDeleteDialogOpen(false);
-      setBranchToDelete(null);
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case "active":
-        return "bg-success text-success-foreground";
-      case "pending":
-        return "bg-warning text-warning-foreground";
-      case "draft":
-        return "bg-muted text-muted-foreground";
-      default:
-        return "bg-secondary text-secondary-foreground";
-    }
-  };
-
   if (loading) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-4 text-muted-foreground">Loading branches...</p>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          {[...Array(6)].map((_, i) => (
+            <Skeleton key={i} className="h-32" />
+          ))}
         </div>
+        <Skeleton className="h-64" />
+      </div>
+    );
+  }
+
+  if (!analytics) {
+    return (
+      <div className="container mx-auto p-6">
+        <p className="text-center text-muted-foreground">No data available</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-4xl font-bold text-foreground mb-2">Branch Dashboard</h1>
-            <p className="text-muted-foreground">Manage your branches, staff, and services</p>
-          </div>
-          <div className="flex gap-2">
-            <Button onClick={() => navigate("/calendar")} variant="outline">
-              <Calendar className="mr-2 h-4 w-4" />
-              Staff Calendar
-            </Button>
-            <Button onClick={() => navigate("/")}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Branch
-            </Button>
-            <Button variant="outline" onClick={handleSignOut}>
-              <LogOut className="mr-2 h-4 w-4" />
-              Sign Out
-            </Button>
-          </div>
+    <div className="container mx-auto p-6 space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
+          <p className="text-muted-foreground">Enterprise-level insights and performance metrics</p>
         </div>
-
-        {branches.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <Building2 className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No branches yet</h3>
-                <p className="text-muted-foreground mb-4">
-                  Get started by creating your first branch
-                </p>
-                <Button onClick={() => navigate("/")}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Branch
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {branches.map((branch) => (
-              <Card
-                key={branch.id}
-                className="hover:shadow-lg transition-shadow cursor-pointer"
-                onClick={() => navigate(`/branch/${branch.id}`)}
-              >
-                <CardHeader>
-                  <div className="flex items-start justify-between mb-2">
-                    <div className="flex items-center gap-3">
-                      {branch.logo_url ? (
-                        <img
-                          src={branch.logo_url}
-                          alt={branch.name}
-                          className="w-12 h-12 rounded-lg object-cover"
-                        />
-                      ) : (
-                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                          <Building2 className="h-6 w-6 text-muted-foreground" />
-                        </div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Badge className={getStatusColor(branch.status)}>
-                        {branch.status}
-                      </Badge>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-destructive focus:text-destructive"
-                            onClick={(e) => handleDeleteClick(branch, e)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete Branch
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
-                  </div>
-                  <CardTitle className="text-xl">{branch.name}</CardTitle>
-                  <CardDescription className="line-clamp-2">
-                    {branch.address}
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex gap-4 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <Package className="h-4 w-4" />
-                      <span>{branch._count?.services || 0} Services</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Users className="h-4 w-4" />
-                      <span>{branch._count?.staff || 0} Staff</span>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
+        <Button onClick={() => navigate('/')}>
+          <Plus className="mr-2 h-4 w-4" />
+          Create New Branch
+        </Button>
       </div>
 
-      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete Branch</AlertDialogTitle>
-            <AlertDialogDescription>
-              Are you sure you want to delete <strong>{branchToDelete?.name}</strong>?
-              <br /><br />
-              This action cannot be undone. All associated data including staff assignments, services, and appointments will be affected.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleConfirmDelete}
-              disabled={deleting}
-              className="bg-destructive hover:bg-destructive/90"
-            >
-              {deleting ? "Deleting..." : "Delete Branch"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* KPI Cards */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+        <StatCard
+          title="Total Revenue"
+          value={`$${analytics.kpis.totalRevenue.toFixed(2)}`}
+          change={8.2}
+          changeLabel="vs last month"
+          icon={DollarSign}
+          trend="up"
+        />
+        <StatCard
+          title="Appointments"
+          value={analytics.kpis.totalAppointments}
+          change={12.5}
+          changeLabel="vs last week"
+          icon={Calendar}
+          trend="up"
+        />
+        <StatCard
+          title="Active Branches"
+          value={analytics.kpis.activeBranches}
+          icon={Building2}
+          trend="neutral"
+        />
+        <StatCard
+          title="Total Customers"
+          value={analytics.kpis.uniqueCustomers}
+          change={5.3}
+          changeLabel="new this month"
+          icon={Users}
+          trend="up"
+        />
+        <StatCard
+          title="Avg Revenue/Apt"
+          value={`$${analytics.kpis.avgRevenuePerAppointment.toFixed(2)}`}
+          change={-2.1}
+          changeLabel="vs last month"
+          icon={TrendingUp}
+          trend="down"
+        />
+        <StatCard
+          title="Staff Utilization"
+          value={`${analytics.kpis.staffUtilization}%`}
+          icon={Users}
+          trend="neutral"
+        />
+      </div>
+
+      {/* Branch Comparison */}
+      {analytics.branchData.length > 0 && (
+        <BranchComparisonTable branches={analytics.branchData} />
+      )}
+
+      {/* Three Column Layout */}
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {/* Top Services */}
+        {analytics.topServices.length > 0 && (
+          <TopServicesCard services={analytics.topServices} />
+        )}
+
+        {/* Staff Leaderboard */}
+        {analytics.topStaff.length > 0 && (
+          <StaffLeaderboard staff={analytics.topStaff} />
+        )}
+
+        {/* Customer Insights */}
+        <CustomerInsights stats={analytics.customerStats} />
+      </div>
     </div>
   );
-}
+};
+
+export default BranchDashboard;
