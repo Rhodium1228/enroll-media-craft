@@ -57,11 +57,15 @@ export async function fetchDashboardAnalytics(userId: string): Promise<Dashboard
     `)
     .eq("created_by", userId);
 
-  // Fetch branches
-  const { data: branches } = await supabase
+  // Fetch branches (RLS handles filtering by creator)
+  const { data: branches, error: branchesError } = await supabase
     .from("branches")
-    .select("*")
-    .eq("created_by", userId);
+    .select("*");
+  
+  if (branchesError) {
+    console.error("Branches fetch error:", branchesError);
+    throw new Error("Failed to fetch branches");
+  }
 
   // Fetch staff with assignments
   const { data: staff } = await supabase

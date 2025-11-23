@@ -42,6 +42,7 @@ export default function BranchDetail() {
   const [branch, setBranch] = useState<Branch | null>(null);
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showOverrideDialog, setShowOverrideDialog] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
@@ -85,24 +86,43 @@ export default function BranchDetail() {
       }
     } catch (error: any) {
       console.error("Branch detail error:", error);
+      const errorMessage = error.message || "Failed to load branch details";
+      setError(errorMessage);
       toast({
         title: "Error Loading Branch",
-        description: error.message || "Failed to load branch details",
+        description: errorMessage,
         variant: "destructive",
       });
-      // Delay redirect to let user see the error
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 2000);
     } finally {
       setLoading(false);
     }
   };
 
-  if (loading || !branch) {
+  if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error || !branch) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="max-w-md w-full">
+          <CardHeader>
+            <CardTitle>Couldn't Load Branch</CardTitle>
+            <CardDescription>
+              {error || "Branch not found or you don't have permission to view it"}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button onClick={() => navigate("/dashboard")} className="w-full">
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
