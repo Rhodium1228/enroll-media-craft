@@ -1,0 +1,409 @@
+import { useState, useEffect } from "react";
+import { Calendar } from "@/components/ui/calendar";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
+import { format, parseISO } from "date-fns";
+import { DateStaffAssignmentForm } from "./DateStaffAssignmentForm";
+import { Users, Edit, Trash2, AlertCircle } from "lucide-react";
+import {
+  StaffDateAssignment,
+  TimeSlot,
+  detectDateAssignmentConflicts,
+  formatConflictMessage,
+} from "@/lib/dateAssignmentUtils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+
+interface Staff {
+  id: string;
+  first_name: string;
+  last_name: string;
+}
+
+interface BranchStaffScheduleCalendarProps {
+  branchId: string;
+  branchName: string;
+}
+
+export function BranchStaffScheduleCalendar({
+  branchId,
+  branchName,
+}: BranchStaffScheduleCalendarProps) {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
+  const [assignments, setAssignments] = useState<StaffDateAssignment[]>([]);
+  const [availableStaff, setAvailableStaff] = useState<Staff[]>([]);
+  const [showAssignmentForm, setShowAssignmentForm] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [conflictWarning, setConflictWarning] = useState<string>("");
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [pendingAssignment, setPendingAssignment] = useState<{
+    staffId: string;
+    timeSlots: TimeSlot[];
+    reason?: string;
+  } | null>(null);
+  const { toast } = useToast();
+
+  // Fetch assignments for the branch
+  useEffect(() => {
+    fetchAssignments();
+  }, [branchId]);
+
+  // Fetch available staff for the branch
+  useEffect(() => {
+    fetchAvailableStaff();
+  }, [branchId]);
+
+  const fetchAssignments = async () => {
+    const { data, error } = await supabase
+      .from("staff_date_assignments")
+      .select(`
+        *,
+        staff:staff_id (
+          id,
+          first_name,
+          last_name
+        )
+      `)
+      .eq("branch_id", branchId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch staff assignments",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAssignments((data || []) as any);
+  };
+
+  const fetchAvailableStaff = async () => {
+    const { data, error } = await supabase
+      .from("staff_branches")
+      .select("staff:staff_id(id, first_name, last_name)")
+      .eq("branch_id", branchId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to fetch available staff",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const staffList = data?.map((item: any) => item.staff).filter(Boolean) || [];
+    setAvailableStaff(staffList);
+  };
+
+  const checkConflicts = async (
+    staffId: string,
+    date: string,
+    timeSlots: TimeSlot[]
+  ) => {
+    // Get staff info
+    const staff = availableStaff.find((s) => s.id === staffId);
+    if (!staff) return [];
+
+    // Fetch existing assignments for this staff on this date at other branches
+    const { data, error } = await supabase
+      .from("staff_date_assignments")
+      .select(`
+        *,
+        branch:branch_id (
+          id,
+          name
+        )
+      `)
+      .eq("staff_id", staffId)
+      .eq("date", date)
+      .neq("branch_id", branchId);
+
+    if (error || !data) return [];
+
+    const existingAssignments = data.map((assignment: any) => ({
+      branch_id: assignment.branch.id,
+      branch_name: assignment.branch.name,
+      time_slots: assignment.time_slots,
+    }));
+
+    return detectDateAssignmentConflicts(
+      staffId,
+      `${staff.first_name} ${staff.last_name}`,
+      date,
+      timeSlots,
+      existingAssignments,
+      branchId
+    );
+  };
+
+  const handleAssignStaff = async (
+    staffId: string,
+    timeSlots: TimeSlot[],
+    reason?: string
+  ) => {
+    if (!selectedDate) return;
+
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    
+    // Check for conflicts
+    const conflicts = await checkConflicts(staffId, dateStr, timeSlots);
+
+    if (conflicts.length > 0) {
+      const conflictMsg = formatConflictMessage(conflicts);
+      setConflictWarning(conflictMsg);
+      setPendingAssignment({ staffId, timeSlots, reason });
+      setShowConflictDialog(true);
+      return;
+    }
+
+    await saveAssignment(staffId, dateStr, timeSlots, reason);
+  };
+
+  const saveAssignment = async (
+    staffId: string,
+    date: string,
+    timeSlots: TimeSlot[],
+    reason?: string
+  ) => {
+    setIsLoading(true);
+
+    const { error } = await supabase.from("staff_date_assignments").insert({
+      staff_id: staffId,
+      branch_id: branchId,
+      date,
+      time_slots: timeSlots as any,
+      reason,
+    });
+
+    setIsLoading(false);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to assign staff",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "Staff assigned successfully",
+    });
+
+    setShowAssignmentForm(false);
+    setPendingAssignment(null);
+    fetchAssignments();
+  };
+
+  const handleConfirmWithConflict = () => {
+    if (pendingAssignment && selectedDate) {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      saveAssignment(
+        pendingAssignment.staffId,
+        dateStr,
+        pendingAssignment.timeSlots,
+        pendingAssignment.reason
+      );
+    }
+    setShowConflictDialog(false);
+    setConflictWarning("");
+  };
+
+  const handleDeleteAssignment = async (assignmentId: string) => {
+    const { error } = await supabase
+      .from("staff_date_assignments")
+      .delete()
+      .eq("id", assignmentId);
+
+    if (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete assignment",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    toast({
+      title: "Success",
+      description: "Assignment deleted",
+    });
+
+    fetchAssignments();
+  };
+
+  // Get assignments for selected date
+  const selectedDateStr = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
+  const selectedDateAssignments = assignments.filter(
+    (a) => a.date === selectedDateStr
+  );
+
+  // Get dates with assignments for calendar highlights
+  const datesWithAssignments = assignments.map((a) => parseISO(a.date));
+
+  return (
+    <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Users className="h-5 w-5" />
+            Staff Schedule Calendar
+          </CardTitle>
+        </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex flex-col lg:flex-row gap-6">
+          {/* Calendar */}
+          <div className="flex-1">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={setSelectedDate}
+              className="rounded-md border"
+              modifiers={{
+                hasAssignments: datesWithAssignments,
+              }}
+              modifiersClassNames={{
+                hasAssignments: "bg-primary/10 font-semibold",
+              }}
+            />
+          </div>
+
+          {/* Selected Date Details */}
+          <div className="flex-1 space-y-4">
+            {selectedDate ? (
+              <>
+                <div>
+                  <h3 className="font-semibold text-lg">
+                    {format(selectedDate, "EEEE, MMMM d, yyyy")}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedDateAssignments.length} staff assigned
+                  </p>
+                </div>
+
+                <Separator />
+
+                {selectedDateAssignments.length > 0 ? (
+                  <div className="space-y-3">
+                    {selectedDateAssignments.map((assignment: any) => (
+                      <Card key={assignment.id}>
+                        <CardContent className="p-4">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <p className="font-medium">
+                                {assignment.staff.first_name}{" "}
+                                {assignment.staff.last_name}
+                              </p>
+                              <div className="space-y-1">
+                                {assignment.time_slots.map(
+                                  (slot: TimeSlot, idx: number) => (
+                                    <p
+                                      key={idx}
+                                      className="text-sm text-muted-foreground"
+                                    >
+                                      {slot.start} - {slot.end}
+                                    </p>
+                                  )
+                                )}
+                              </div>
+                              {assignment.reason && (
+                                <Badge variant="outline" className="mt-2">
+                                  {assignment.reason}
+                                </Badge>
+                              )}
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleDeleteAssignment(assignment.id)
+                              }
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    No staff assigned for this date
+                  </p>
+                )}
+
+                {!showAssignmentForm ? (
+                  <Button
+                    onClick={() => setShowAssignmentForm(true)}
+                    className="w-full"
+                  >
+                    <Users className="h-4 w-4 mr-2" />
+                    Assign Staff to This Date
+                  </Button>
+                ) : (
+                  <div className="border rounded-lg p-4">
+                    <DateStaffAssignmentForm
+                      availableStaff={availableStaff}
+                      onSubmit={handleAssignStaff}
+                      onCancel={() => setShowAssignmentForm(false)}
+                      isLoading={isLoading}
+                    />
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Select a date to view or add assignments
+              </p>
+            )}
+          </div>
+        </div>
+      </CardContent>
+      </Card>
+
+      {/* Conflict Warning Dialog */}
+      <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-destructive" />
+              Schedule Conflict Detected
+            </AlertDialogTitle>
+            <AlertDialogDescription className="whitespace-pre-line">
+              {conflictWarning}
+              {"\n\n"}
+              Do you want to proceed with this assignment anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => {
+              setShowConflictDialog(false);
+              setConflictWarning("");
+              setPendingAssignment(null);
+            }}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmWithConflict}>
+              Proceed Anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

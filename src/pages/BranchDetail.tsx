@@ -12,6 +12,7 @@ import StaffList from "@/components/staff/StaffList";
 import { BranchDateOverride } from "@/components/branch/BranchDateOverride";
 import { BranchOverrideList } from "@/components/branch/BranchOverrideList";
 import { BranchHoursCalendar } from "@/components/branch/BranchHoursCalendar";
+import { BranchStaffScheduleCalendar } from "@/components/branch/BranchStaffScheduleCalendar";
 
 interface Branch {
   id: string;
@@ -154,6 +155,7 @@ export default function BranchDetail() {
             <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="services">Services ({services.length})</TabsTrigger>
             <TabsTrigger value="staff">Staff</TabsTrigger>
+            <TabsTrigger value="schedule">Staff Schedule</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-6">
@@ -274,6 +276,13 @@ export default function BranchDetail() {
 
           <TabsContent value="staff" className="mt-6">
             <StaffList branchId={branchId!} />
+          </TabsContent>
+
+          <TabsContent value="schedule" className="mt-6">
+            <BranchStaffScheduleCalendar
+              branchId={branchId!}
+              branchName={branch.name}
+            />
           </TabsContent>
         </Tabs>
 
