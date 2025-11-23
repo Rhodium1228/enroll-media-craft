@@ -7,9 +7,10 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, User, Mail, Phone, Building2, Edit2 } from "lucide-react";
+import { UserPlus, User, Mail, Phone, Building2, Edit2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import StaffEnrollmentDialog from "@/components/staff/StaffEnrollmentDialog";
 
 interface Staff {
   id: string;
@@ -32,6 +33,11 @@ export default function StaffManagement() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [selectedStaff, setSelectedStaff] = useState<Staff | null>(null);
   const [branches, setBranches] = useState<{ [staffId: string]: Branch[] }>({});
+  const [allBranches, setAllBranches] = useState<Branch[]>([]);
+  const [branchSelectOpen, setBranchSelectOpen] = useState(false);
+  const [staffForBranchAssign, setStaffForBranchAssign] = useState<Staff | null>(null);
+  const [selectedBranchId, setSelectedBranchId] = useState<string>("");
+  const [enrollmentDialogOpen, setEnrollmentDialogOpen] = useState(false);
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -44,7 +50,17 @@ export default function StaffManagement() {
 
   useEffect(() => {
     fetchStaff();
+    fetchAllBranches();
   }, []);
+
+  useEffect(() => {
+    // Refetch staff when enrollment dialog closes
+    if (!enrollmentDialogOpen && staffForBranchAssign) {
+      fetchStaff();
+      setStaffForBranchAssign(null);
+      setSelectedBranchId("");
+    }
+  }, [enrollmentDialogOpen]);
 
   const fetchStaff = async () => {
     try {
@@ -89,6 +105,25 @@ export default function StaffManagement() {
     }
   };
 
+  const fetchAllBranches = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("branches")
+        .select("id, name")
+        .eq("created_by", user.id)
+        .in("status", ["active", "pending"])
+        .order("name");
+
+      if (error) throw error;
+      setAllBranches(data || []);
+    } catch (error) {
+      console.error("Error fetching branches:", error);
+    }
+  };
+
   const handleEdit = (staffMember: Staff) => {
     setSelectedStaff(staffMember);
     setFormData({
@@ -99,6 +134,28 @@ export default function StaffManagement() {
       status: staffMember.status,
     });
     setDialogOpen(true);
+  };
+
+  const handleAssignToBranch = (staffMember: Staff) => {
+    setStaffForBranchAssign(staffMember);
+    setSelectedBranchId("");
+    setBranchSelectOpen(true);
+  };
+
+  const handleBranchSelected = () => {
+    if (!selectedBranchId) {
+      toast.error("Please select a branch");
+      return;
+    }
+    setBranchSelectOpen(false);
+    setEnrollmentDialogOpen(true);
+  };
+
+  const handleEnrollmentClose = () => {
+    setEnrollmentDialogOpen(false);
+    setStaffForBranchAssign(null);
+    setSelectedBranchId("");
+    fetchStaff();
   };
 
   const handleSubmit = async () => {
@@ -269,15 +326,25 @@ export default function StaffManagement() {
                     </div>
                   </div>
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleEdit(staffMember)}
-                >
-                  <Edit2 className="h-4 w-4 mr-2" />
-                  Edit
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleEdit(staffMember)}
+                  >
+                    <Edit2 className="h-4 w-4 mr-2" />
+                    Edit
+                  </Button>
+                  <Button
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => handleAssignToBranch(staffMember)}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Assign to Branch
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -357,6 +424,61 @@ export default function StaffManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Branch Selection Dialog */}
+      <Dialog open={branchSelectOpen} onOpenChange={setBranchSelectOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Assign to Branch</DialogTitle>
+            <DialogDescription>
+              Select a branch to assign {staffForBranchAssign?.first_name} {staffForBranchAssign?.last_name} to
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="branch">Select Branch *</Label>
+              <Select value={selectedBranchId} onValueChange={setSelectedBranchId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Choose a branch" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allBranches
+                    .filter(branch => !branches[staffForBranchAssign?.id || ""]?.some(b => b.id === branch.id))
+                    .map((branch) => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              {allBranches.filter(branch => !branches[staffForBranchAssign?.id || ""]?.some(b => b.id === branch.id)).length === 0 && (
+                <p className="text-sm text-muted-foreground">
+                  This staff member is already assigned to all available branches
+                </p>
+              )}
+            </div>
+
+            <Button 
+              onClick={handleBranchSelected} 
+              className="w-full"
+              disabled={!selectedBranchId}
+            >
+              Continue to Assignment
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Staff Enrollment Dialog for Branch Assignment */}
+      {staffForBranchAssign && selectedBranchId && (
+        <StaffEnrollmentDialog
+          open={enrollmentDialogOpen}
+          onOpenChange={setEnrollmentDialogOpen}
+          branchId={selectedBranchId}
+          staff={staffForBranchAssign}
+        />
+      )}
     </div>
   );
 }
