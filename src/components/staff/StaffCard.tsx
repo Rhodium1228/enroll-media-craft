@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit2, Trash2, User, Mail, Phone } from "lucide-react";
+import { Edit2, Trash2, User, Mail, Phone, Building2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -24,10 +24,48 @@ interface StaffCardProps {
   onUpdate: () => void;
 }
 
+interface Branch {
+  id: string;
+  name: string;
+}
+
 export default function StaffCard({ staff, branchId, onEdit, onUpdate }: StaffCardProps) {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [enrolledBranches, setEnrolledBranches] = useState<Branch[]>([]);
+  const [loadingBranches, setLoadingBranches] = useState(true);
   const { toast } = useToast();
+
+  useEffect(() => {
+    fetchEnrolledBranches();
+  }, [staff.id]);
+
+  const fetchEnrolledBranches = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("staff_branches")
+        .select(`
+          branch_id,
+          branches:branch_id (
+            id,
+            name
+          )
+        `)
+        .eq("staff_id", staff.id);
+
+      if (error) throw error;
+
+      const branches = (data || [])
+        .map((sb: any) => sb.branches)
+        .filter(Boolean);
+      
+      setEnrolledBranches(branches);
+    } catch (error: any) {
+      console.error("Error fetching branches:", error);
+    } finally {
+      setLoadingBranches(false);
+    }
+  };
 
   const handleDelete = async () => {
     setDeleting(true);
@@ -100,7 +138,7 @@ export default function StaffCard({ staff, branchId, onEdit, onUpdate }: StaffCa
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 mb-4">
+          <div className="space-y-3 mb-4">
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Mail className="h-4 w-4" />
               <span className="truncate">{staff.email}</span>
@@ -108,6 +146,33 @@ export default function StaffCard({ staff, branchId, onEdit, onUpdate }: StaffCa
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Phone className="h-4 w-4" />
               <span>{staff.phone}</span>
+            </div>
+            
+            {/* Enrolled Branches */}
+            <div className="pt-2 border-t">
+              <div className="flex items-start gap-2 text-sm">
+                <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
+                <div className="flex-1">
+                  <p className="text-xs text-muted-foreground mb-1">Enrolled at:</p>
+                  {loadingBranches ? (
+                    <span className="text-xs text-muted-foreground">Loading...</span>
+                  ) : enrolledBranches.length > 0 ? (
+                    <div className="flex flex-wrap gap-1">
+                      {enrolledBranches.map((branch) => (
+                        <Badge
+                          key={branch.id}
+                          variant={branch.id === branchId ? "default" : "outline"}
+                          className="text-xs"
+                        >
+                          {branch.name}
+                        </Badge>
+                      ))}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No branches</span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex gap-2">
