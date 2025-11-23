@@ -168,7 +168,7 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
                   key={date.toISOString()}
                   onClick={() => onDayClick(date)}
                   className={cn(
-                    "min-h-[100px] p-2 rounded-lg border-2 transition-all hover:shadow-lg hover:scale-105",
+                    "min-h-[60px] md:min-h-[100px] p-1 md:p-2 rounded-lg border-2 transition-all hover:shadow-lg hover:scale-105",
                     "flex flex-col items-start",
                     isCurrentMonth
                       ? "bg-card border-border hover:bg-accent"
@@ -177,37 +177,39 @@ export default function MonthCalendar({ schedules, conflicts, onDayClick }: Mont
                     conflictCount > 0 && "border-destructive"
                   )}
                 >
-                  <div className="flex justify-between items-start w-full mb-2">
+                  <div className="flex justify-between items-start w-full mb-1">
                     <span
                       className={cn(
-                        "text-sm font-semibold",
+                        "text-xs md:text-sm font-semibold",
                         isCurrentDay && "text-primary"
                       )}
                     >
                       {format(date, "d")}
                     </span>
                     {conflictCount > 0 && (
-                      <Badge variant="destructive" className="h-5 text-xs flex items-center gap-1 px-1">
-                        <AlertTriangle className="h-3 w-3" />
-                        {conflictCount}
+                      <Badge variant="destructive" className="h-4 md:h-5 text-[10px] md:text-xs flex items-center gap-1 px-1">
+                        <AlertTriangle className="h-2 w-2 md:h-3 md:w-3" />
+                        <span className="hidden md:inline">{conflictCount}</span>
                       </Badge>
                     )}
                   </div>
 
                   {isCurrentMonth && (
-                    <div className="w-full space-y-1">
+                    <div className="w-full space-y-0.5 md:space-y-1">
                       {staffCount > 0 ? (
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <Users className="h-3 w-3" />
-                          <span>{staffCount} staff</span>
+                        <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground">
+                          <Users className="h-2 w-2 md:h-3 md:w-3" />
+                          <span className="hidden sm:inline">{staffCount} staff</span>
+                          <span className="sm:hidden">{staffCount}</span>
                         </div>
                       ) : (
-                        <div className="text-xs text-muted-foreground">No staff</div>
+                        <div className="text-[10px] md:text-xs text-muted-foreground hidden md:block">No staff</div>
                       )}
                       {appointmentCount > 0 && (
-                        <div className="flex items-center gap-1 text-xs text-primary">
-                          <Calendar className="h-3 w-3" />
-                          <span>{appointmentCount} appt{appointmentCount > 1 ? "s" : ""}</span>
+                        <div className="flex items-center gap-1 text-[10px] md:text-xs text-primary">
+                          <Calendar className="h-2 w-2 md:h-3 md:w-3" />
+                          <span className="hidden sm:inline">{appointmentCount} appt{appointmentCount > 1 ? "s" : ""}</span>
+                          <span className="sm:hidden">{appointmentCount}</span>
                         </div>
                       )}
                     </div>

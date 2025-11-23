@@ -58,7 +58,7 @@ export const AppointmentWeekView = ({
               </CardTitle>
             </CardHeader>
             <CardContent className="p-3 pt-0">
-              <ScrollArea className="h-96">
+              <ScrollArea className="h-64 md:h-96">
                 <div className="space-y-2">
                   {dayAppointments.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">
