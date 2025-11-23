@@ -58,6 +58,7 @@ export function BranchStaffScheduleCalendar({
   } | null>(null);
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
   const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
+  const [selectedStaffForTask, setSelectedStaffForTask] = useState<string | null>(null);
   const { toast } = useToast();
 
   // Fetch assignments for the branch
@@ -404,6 +405,7 @@ export function BranchStaffScheduleCalendar({
                                     variant="outline"
                                     size="sm"
                                     onClick={() => {
+                                      setSelectedStaffForTask(assignment.staff_id);
                                       setShowAppointmentDialog(true);
                                     }}
                                   >
@@ -511,12 +513,21 @@ export function BranchStaffScheduleCalendar({
 
       <AppointmentDialog
         open={showAppointmentDialog}
-        onOpenChange={setShowAppointmentDialog}
+        onOpenChange={(open) => {
+          setShowAppointmentDialog(open);
+          if (!open) setSelectedStaffForTask(null);
+        }}
         prefilledBranchId={branchId}
         prefilledDate={selectedDate}
+        prefilledStaffId={selectedStaffForTask || undefined}
         onSuccess={() => {
           fetchAppointments();
           setShowAppointmentDialog(false);
+          setSelectedStaffForTask(null);
+          toast({
+            title: "Success",
+            description: "Task assigned successfully",
+          });
         }}
       />
 
