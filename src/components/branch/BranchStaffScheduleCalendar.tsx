@@ -58,6 +58,27 @@ export function BranchStaffScheduleCalendar({
   // Fetch assignments for the branch
   useEffect(() => {
     fetchAssignments();
+    
+    // Set up realtime subscription
+    const channel = supabase
+      .channel('staff-assignment-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_date_assignments',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => {
+          fetchAssignments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [branchId]);
 
   // Fetch available staff for the branch
