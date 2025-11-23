@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Index from "./pages/Index";
 import BranchDashboard from "./pages/BranchDashboard";
 import BranchDetail from "./pages/BranchDetail";
@@ -25,41 +26,51 @@ const App = () => (
           <Route
             path="/dashboard"
             element={
-              <AppLayout>
-                <BranchDashboard />
-              </AppLayout>
+              <ProtectedRoute>
+                <AppLayout>
+                  <BranchDashboard />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/branch/:branchId"
             element={
-              <AppLayout>
-                <BranchDetail />
-              </AppLayout>
+              <ProtectedRoute>
+                <AppLayout>
+                  <BranchDetail />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/staff"
             element={
-              <AppLayout>
-                <StaffManagement />
-              </AppLayout>
+              <ProtectedRoute>
+                <AppLayout>
+                  <StaffManagement />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/calendar"
             element={
-              <AppLayout>
-                <StaffCalendar />
-              </AppLayout>
+              <ProtectedRoute>
+                <AppLayout>
+                  <StaffCalendar />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           <Route
             path="/appointments"
             element={
-              <AppLayout>
-                <Appointments />
-              </AppLayout>
+              <ProtectedRoute>
+                <AppLayout>
+                  <Appointments />
+                </AppLayout>
+              </ProtectedRoute>
             }
           />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
