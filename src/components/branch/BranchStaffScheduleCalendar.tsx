@@ -365,90 +365,118 @@ export function BranchStaffScheduleCalendar({
 
                  {selectedDateAssignments.length > 0 ? (
                   <div className="space-y-3">
-                    {selectedDateAssignments.map((assignment: any) => (
-                      <Card key={assignment.id}>
-                        <CardContent className="p-3 sm:p-4">
-                          <div className="flex flex-col sm:flex-row justify-between items-start gap-3">
-                            <div className="space-y-1 flex-1">
-                              <p className="font-medium">
-                                {assignment.staff.first_name}{" "}
-                                {assignment.staff.last_name}
-                              </p>
-                              <div className="space-y-1">
-                                {assignment.time_slots.map(
-                                  (slot: TimeSlot, idx: number) => (
-                                    <p
-                                      key={idx}
-                                      className="text-sm text-muted-foreground"
-                                    >
-                                      {slot.start} - {slot.end}
-                                    </p>
-                                  )
-                                )}
+                    {selectedDateAssignments.map((assignment: any) => {
+                      const staffAppointments = appointments.filter(
+                        apt => apt.staff_id === assignment.staff_id
+                      );
+                      
+                      return (
+                        <Card key={assignment.id} className="overflow-hidden">
+                          <CardContent className="p-3 sm:p-4">
+                            <div className="flex flex-col gap-3">
+                              {/* Staff Header */}
+                              <div className="flex justify-between items-start gap-3">
+                                <div className="space-y-1 flex-1">
+                                  <p className="font-medium">
+                                    {assignment.staff.first_name}{" "}
+                                    {assignment.staff.last_name}
+                                  </p>
+                                  <div className="space-y-1">
+                                    {assignment.time_slots.map(
+                                      (slot: TimeSlot, idx: number) => (
+                                        <p
+                                          key={idx}
+                                          className="text-sm text-muted-foreground"
+                                        >
+                                          {slot.start} - {slot.end}
+                                        </p>
+                                      )
+                                    )}
+                                  </div>
+                                  {assignment.reason && (
+                                    <Badge variant="outline" className="mt-2">
+                                      {assignment.reason}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="flex gap-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => {
+                                      setShowAppointmentDialog(true);
+                                    }}
+                                  >
+                                    <Plus className="h-3 w-3 mr-1" />
+                                    Assign Task
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    onClick={() =>
+                                      handleDeleteAssignment(assignment.id)
+                                    }
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </div>
                               </div>
-                              {assignment.reason && (
-                                <Badge variant="outline" className="mt-2">
-                                  {assignment.reason}
-                                </Badge>
+
+                              {/* Staff Tasks */}
+                              {staffAppointments.length > 0 && (
+                                <div className="pl-3 border-l-2 border-primary/30 space-y-2">
+                                  <p className="text-xs font-medium text-muted-foreground">
+                                    Assigned Tasks ({staffAppointments.length})
+                                  </p>
+                                  <div className="space-y-2">
+                                    {staffAppointments.map((apt) => (
+                                      <div
+                                        key={apt.id}
+                                        className="text-sm p-2 bg-accent/50 rounded border"
+                                      >
+                                        <div className="flex justify-between items-start">
+                                          <div className="flex-1">
+                                            <p className="font-medium">
+                                              {apt.customer_name}
+                                            </p>
+                                            <p className="text-xs text-muted-foreground">
+                                              {apt.start_time} - {apt.service?.title}
+                                            </p>
+                                            {apt.customer_phone && (
+                                              <p className="text-xs text-muted-foreground">
+                                                {apt.customer_phone}
+                                              </p>
+                                            )}
+                                          </div>
+                                          <Badge
+                                            variant={
+                                              apt.status === "completed"
+                                                ? "default"
+                                                : apt.status === "cancelled"
+                                                ? "destructive"
+                                                : "secondary"
+                                            }
+                                            className="text-xs"
+                                          >
+                                            {apt.status}
+                                          </Badge>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
                               )}
                             </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="self-end sm:self-start"
-                              onClick={() =>
-                                handleDeleteAssignment(assignment.id)
-                              }
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </div>
                  ) : (
                    <p className="text-sm text-muted-foreground text-center py-8">
                      No staff assigned for this date
                    </p>
                  )}
-
-                 <Separator className="my-4" />
-
-                 {/* Appointments Section */}
-                 <div className="space-y-3">
-                   <div className="flex items-center justify-between">
-                     <h4 className="font-semibold flex items-center gap-2">
-                       <CalendarIcon className="h-4 w-4" />
-                       Appointments ({appointments.length})
-                     </h4>
-                     <Button
-                       onClick={() => setShowAppointmentDialog(true)}
-                       size="sm"
-                       variant="outline"
-                     >
-                       <Plus className="h-4 w-4 mr-2" />
-                       Book
-                     </Button>
-                   </div>
-
-                   {appointments.length === 0 ? (
-                     <p className="text-sm text-muted-foreground text-center py-4">
-                       No appointments scheduled
-                     </p>
-                   ) : (
-                     <div className="space-y-2">
-                       {appointments.map((appointment) => (
-                         <AppointmentCard
-                           key={appointment.id}
-                           appointment={appointment}
-                           onDelete={() => fetchAppointments()}
-                           onUpdateStatus={() => fetchAppointments()}
-                         />
-                       ))}
-                     </div>
-                   )}
-                 </div>
 
                  <Separator className="my-4" />
 
