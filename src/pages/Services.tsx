@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Package, DollarSign, Clock, Trash2, Edit } from "lucide-react";
+import { Plus, Package, DollarSign, Clock, Trash2, Edit, TrendingUp, Calendar, Star } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
@@ -25,6 +25,12 @@ interface Service {
   branch_id: string;
   branches?: {
     name: string;
+  };
+  metrics?: {
+    bookingCount: number;
+    revenueGenerated: number;
+    peakDay?: string;
+    peakTimeSlot?: string;
   };
 }
 
@@ -75,7 +81,62 @@ export default function Services() {
         .order("created_at", { ascending: false });
 
       if (servicesError) throw servicesError;
-      setServices(servicesData || []);
+
+      // Fetch appointments to calculate metrics
+      const { data: appointmentsData, error: appointmentsError } = await supabase
+        .from("appointments")
+        .select("service_id, date, start_time, status")
+        .in("service_id", servicesData?.map(s => s.id) || []);
+
+      if (appointmentsError) throw appointmentsError;
+
+      // Calculate metrics for each service
+      const servicesWithMetrics = servicesData?.map(service => {
+        const serviceAppointments = appointmentsData?.filter(apt => apt.service_id === service.id) || [];
+        
+        // Calculate booking count (completed + scheduled)
+        const bookingCount = serviceAppointments.filter(
+          apt => apt.status === 'completed' || apt.status === 'scheduled'
+        ).length;
+
+        // Calculate revenue (cost * completed appointments)
+        const completedCount = serviceAppointments.filter(apt => apt.status === 'completed').length;
+        const revenueGenerated = completedCount * service.cost;
+
+        // Calculate peak day of week
+        const dayCount: Record<string, number> = {};
+        serviceAppointments.forEach(apt => {
+          const dayOfWeek = new Date(apt.date).toLocaleDateString('en-US', { weekday: 'short' });
+          dayCount[dayOfWeek] = (dayCount[dayOfWeek] || 0) + 1;
+        });
+        const peakDay = Object.keys(dayCount).length > 0
+          ? Object.entries(dayCount).sort(([, a], [, b]) => b - a)[0][0]
+          : undefined;
+
+        // Calculate peak time slot
+        const timeSlotCount: Record<string, number> = { Morning: 0, Afternoon: 0, Evening: 0 };
+        serviceAppointments.forEach(apt => {
+          const hour = parseInt(apt.start_time.split(':')[0]);
+          if (hour < 12) timeSlotCount.Morning++;
+          else if (hour < 17) timeSlotCount.Afternoon++;
+          else timeSlotCount.Evening++;
+        });
+        const peakTimeSlot = Object.keys(timeSlotCount).length > 0
+          ? Object.entries(timeSlotCount).sort(([, a], [, b]) => b - a)[0][0]
+          : undefined;
+
+        return {
+          ...service,
+          metrics: {
+            bookingCount,
+            revenueGenerated,
+            peakDay,
+            peakTimeSlot
+          }
+        };
+      }) || [];
+
+      setServices(servicesWithMetrics);
     } catch (error) {
       console.error("Error fetching data:", error);
       toast.error("Failed to load services");
@@ -319,7 +380,7 @@ export default function Services() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   <div className="flex items-center gap-2 text-sm">
                     <Clock className="h-4 w-4 text-muted-foreground" />
                     <span>{service.duration} minutes</span>
@@ -330,6 +391,56 @@ export default function Services() {
                       ${service.cost.toFixed(2)}
                     </Badge>
                   </div>
+                  
+                  {service.metrics && (
+                    <>
+                      <div className="border-t pt-3 mt-3 space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <TrendingUp className="h-4 w-4" />
+                            <span>Total Bookings</span>
+                          </div>
+                          <Badge variant="outline" className="font-semibold">
+                            {service.metrics.bookingCount}
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <DollarSign className="h-4 w-4" />
+                            <span>Revenue</span>
+                          </div>
+                          <Badge variant="outline" className="font-semibold text-green-600">
+                            ${service.metrics.revenueGenerated.toFixed(2)}
+                          </Badge>
+                        </div>
+
+                        {service.metrics.peakDay && (
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Calendar className="h-4 w-4" />
+                              <span>Peak Day</span>
+                            </div>
+                            <Badge variant="outline">
+                              {service.metrics.peakDay}
+                            </Badge>
+                          </div>
+                        )}
+
+                        {service.metrics.peakTimeSlot && (
+                          <div className="flex items-center justify-between text-sm">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <Clock className="h-4 w-4" />
+                              <span>Peak Time</span>
+                            </div>
+                            <Badge variant="outline">
+                              {service.metrics.peakTimeSlot}
+                            </Badge>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
                 </div>
               </CardContent>
             </Card>
