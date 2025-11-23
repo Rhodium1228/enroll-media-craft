@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import BranchDashboard from "./pages/BranchDashboard";
 import BranchDetail from "./pages/BranchDetail";
 import StaffCalendar from "./pages/StaffCalendar";
+import Appointments from "./pages/Appointments";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/dashboard" element={<BranchDashboard />} />
           <Route path="/branch/:branchId" element={<BranchDetail />} />
           <Route path="/calendar" element={<StaffCalendar />} />
+          <Route path="/appointments" element={<Appointments />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
