@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -42,6 +43,7 @@ interface BranchEnrolmentWizardProps {
 }
 
 export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) => {
+  const navigate = useNavigate();
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showDraftDialog, setShowDraftDialog] = useState(false);
@@ -346,7 +348,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
 
       localStorage.removeItem("branch_draft");
       toast.success("Branch enrolled successfully!");
-      onClose();
+      navigate("/dashboard");
     } catch (error: any) {
       console.error("Error creating branch:", error);
       toast.error(error.message || "Failed to create branch");
