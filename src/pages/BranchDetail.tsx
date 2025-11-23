@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Clock } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Clock, Calendar } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import StaffList from "@/components/staff/StaffList";
 
@@ -86,14 +86,22 @@ export default function BranchDetail() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <Button
-          variant="ghost"
-          onClick={() => navigate("/dashboard")}
-          className="mb-6"
-        >
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
-        </Button>
+        <div className="flex justify-between items-center mb-6">
+          <Button
+            variant="ghost"
+            onClick={() => navigate("/dashboard")}
+          >
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Dashboard
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/calendar")}
+          >
+            <Calendar className="mr-2 h-4 w-4" />
+            View Staff Calendar
+          </Button>
+        </div>
 
         <div className="mb-8">
           <div className="flex items-start gap-4 mb-4">
