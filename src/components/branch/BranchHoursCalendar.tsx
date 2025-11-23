@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, isSameMonth, isSameDay, addMonths, subMonths } from "date-fns";
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, X, Save, Plus, Edit2, Trash2, CheckSquare, Square } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -48,6 +48,10 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  
+  // Multi-select state
+  const [isMultiSelectMode, setIsMultiSelectMode] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<Date[]>([]);
   
   // Edit form state
   const [overrideType, setOverrideType] = useState<string>("closed");
@@ -125,6 +129,18 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
   };
 
   const handleDateClick = (date: Date) => {
+    if (isMultiSelectMode) {
+      // Multi-select mode - toggle date in selection
+      const isSelected = selectedDates.some(d => isSameDay(d, date));
+      if (isSelected) {
+        setSelectedDates(selectedDates.filter(d => !isSameDay(d, date)));
+      } else {
+        setSelectedDates([...selectedDates, date]);
+      }
+      return;
+    }
+
+    // Single select mode
     if (isSameDay(date, selectedDate || new Date("1900-01-01"))) {
       // Clicking same date - toggle edit mode
       if (isEditing) {
@@ -140,6 +156,22 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
       setIsEditing(true);
       loadOverrideIntoForm(getOverrideForDate(date));
     }
+  };
+
+  const toggleMultiSelectMode = () => {
+    setIsMultiSelectMode(!isMultiSelectMode);
+    setSelectedDates([]);
+    setIsEditing(false);
+    setSelectedDate(null);
+    resetForm();
+  };
+
+  const clearSelection = () => {
+    setSelectedDates([]);
+  };
+
+  const isDateSelected = (date: Date): boolean => {
+    return selectedDates.some(d => isSameDay(d, date));
   };
 
   const loadOverrideIntoForm = (override: BranchOverride | undefined) => {
@@ -229,6 +261,64 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
     }
   };
 
+  const handleApplyToSelected = async () => {
+    if (selectedDates.length === 0) {
+      toast.error("Please select at least one date");
+      return;
+    }
+
+    if (overrideType === "custom_hours" && timeSlots.length === 0) {
+      toast.error("Please add at least one time slot for custom hours");
+      return;
+    }
+
+    // Validate time slots
+    for (const slot of timeSlots) {
+      if (slot.open >= slot.close) {
+        toast.error("Closing time must be after opening time");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+
+    try {
+      const overridesToInsert = selectedDates.map(date => ({
+        branch_id: branchId,
+        date: format(date, "yyyy-MM-dd"),
+        override_type: overrideType,
+        time_slots: (overrideType === "custom_hours" ? timeSlots : []) as any,
+        reason: reason.trim() || null,
+      }));
+
+      // First, delete existing overrides for selected dates
+      const dateStrings = selectedDates.map(d => format(d, "yyyy-MM-dd"));
+      await supabase
+        .from("branch_schedule_overrides")
+        .delete()
+        .eq("branch_id", branchId)
+        .in("date", dateStrings);
+
+      // Then insert new overrides
+      const { error } = await supabase
+        .from("branch_schedule_overrides")
+        .insert(overridesToInsert);
+
+      if (error) throw error;
+
+      toast.success(`Override applied to ${selectedDates.length} date(s) successfully`);
+      await fetchOverrides();
+      setSelectedDates([]);
+      setIsMultiSelectMode(false);
+      resetForm();
+    } catch (error: any) {
+      console.error("Error applying overrides:", error);
+      toast.error(error.message || "Failed to apply overrides");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleDelete = async () => {
     if (!deleteId) return;
 
@@ -279,12 +369,37 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
             <CardTitle className="flex items-center gap-2">
               <CalendarIcon className="h-5 w-5" />
               Branch Hours Calendar
+              {isMultiSelectMode && (
+                <Badge variant="secondary" className="ml-2">
+                  {selectedDates.length} selected
+                </Badge>
+              )}
             </CardTitle>
             <CardDescription>
-              Color-coded availability for quick reference
+              {isMultiSelectMode 
+                ? "Click dates to select multiple, then apply override to all"
+                : "Color-coded availability for quick reference"}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
+            <Button 
+              variant={isMultiSelectMode ? "default" : "outline"} 
+              size="sm"
+              onClick={toggleMultiSelectMode}
+            >
+              {isMultiSelectMode ? <CheckSquare className="h-4 w-4 mr-1" /> : <Square className="h-4 w-4 mr-1" />}
+              {isMultiSelectMode ? "Exit Multi-Select" : "Multi-Select"}
+            </Button>
+            {isMultiSelectMode && selectedDates.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={clearSelection}
+              >
+                Clear ({selectedDates.length})
+              </Button>
+            )}
+            <div className="border-l h-8 mx-2" />
             <Button variant="outline" size="icon" onClick={handlePreviousMonth}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
@@ -318,6 +433,7 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
                 }
 
                 const isSelected = selectedDate && isSameDay(day, selectedDate);
+                const isMultiSelected = isDateSelected(day);
                 const isToday = isSameDay(day, new Date());
                 const isCurrentMonth = isSameMonth(day, currentMonth);
 
@@ -330,10 +446,16 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
                       "flex flex-col items-center justify-center",
                       "hover:scale-105 hover:shadow-md",
                       isCurrentMonth ? "opacity-100" : "opacity-40",
-                      isSelected ? "ring-2 ring-primary ring-offset-2" : "",
+                      isMultiSelected ? "ring-2 ring-primary ring-offset-2 bg-primary/10" : "",
+                      isSelected && !isMultiSelectMode ? "ring-2 ring-primary ring-offset-2" : "",
                       isToday ? "border-primary" : getDateColor(day)
                     )}
                   >
+                    {isMultiSelected && (
+                      <div className="absolute top-0.5 right-0.5">
+                        <CheckSquare className="h-3 w-3 text-primary" />
+                      </div>
+                    )}
                     <span className="text-xs font-medium">
                       {format(day, "d")}
                     </span>
@@ -364,8 +486,106 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
             </div>
           </div>
 
+          {/* Multi-Select Override Form */}
+          {isMultiSelectMode && selectedDates.length > 0 && (
+            <div className="pt-4 border-t space-y-4">
+              <div className="flex items-center justify-between">
+                <h4 className="font-semibold">
+                  Apply Override to {selectedDates.length} Date(s)
+                </h4>
+              </div>
+
+              <div className="space-y-4 p-4 bg-primary/5 rounded-lg border-2 border-primary/20">
+                <div className="space-y-2">
+                  <Label>Override Type</Label>
+                  <RadioGroup value={overrideType} onValueChange={setOverrideType}>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="closed" id="multi-closed" />
+                      <Label htmlFor="multi-closed" className="font-normal cursor-pointer">
+                        🔴 Closed - Branch closed for these dates
+                      </Label>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <RadioGroupItem value="custom_hours" id="multi-custom" />
+                      <Label htmlFor="multi-custom" className="font-normal cursor-pointer">
+                        🟡 Custom Hours - Different hours than regular schedule
+                      </Label>
+                    </div>
+                  </RadioGroup>
+                </div>
+
+                {overrideType === "custom_hours" && (
+                  <div className="space-y-3">
+                    <Label>Time Slots</Label>
+                    {timeSlots.map((slot, index) => (
+                      <div key={index} className="flex items-center gap-2">
+                        <Input
+                          type="time"
+                          value={slot.open}
+                          onChange={(e) => updateTimeSlot(index, "open", e.target.value)}
+                          className="flex-1"
+                        />
+                        <span className="text-muted-foreground text-sm">to</span>
+                        <Input
+                          type="time"
+                          value={slot.close}
+                          onChange={(e) => updateTimeSlot(index, "close", e.target.value)}
+                          className="flex-1"
+                        />
+                        {timeSlots.length > 1 && (
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => removeTimeSlot(index)}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={addTimeSlot}
+                    >
+                      <Plus className="h-3 w-3 mr-1" />
+                      Add Time Slot
+                    </Button>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="multi-reason">Reason (Optional)</Label>
+                  <Textarea
+                    id="multi-reason"
+                    value={reason}
+                    onChange={(e) => setReason(e.target.value)}
+                    placeholder="e.g., Christmas Holiday, Black Friday Sale"
+                    rows={2}
+                  />
+                </div>
+
+                <div className="flex justify-between items-center pt-2">
+                  <div className="text-sm text-muted-foreground">
+                    Selected dates: {selectedDates.map(d => format(d, "MMM d")).join(", ")}
+                  </div>
+                  <Button
+                    onClick={handleApplyToSelected}
+                    disabled={isSaving}
+                    size="sm"
+                  >
+                    <Save className="h-3 w-3 mr-1" />
+                    {isSaving ? "Applying..." : "Apply to All Selected"}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Selected Date Details & Quick Edit */}
-          {selectedDate && (
+          {!isMultiSelectMode && selectedDate && (
             <div className="pt-4 border-t space-y-4">
               <div className="flex items-center justify-between">
                 <h4 className="font-semibold">
