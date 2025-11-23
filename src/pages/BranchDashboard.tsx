@@ -4,8 +4,24 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Users, Package, Plus, LogOut, Calendar } from "lucide-react";
+import { Building2, Users, Package, Plus, LogOut, Calendar, MoreVertical, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Branch {
   id: string;
@@ -22,6 +38,9 @@ interface Branch {
 export default function BranchDashboard() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [branchToDelete, setBranchToDelete] = useState<Branch | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -83,6 +102,44 @@ export default function BranchDashboard() {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     navigate("/");
+  };
+
+  const handleDeleteClick = (branch: Branch, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setBranchToDelete(branch);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!branchToDelete) return;
+    
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("branches")
+        .delete()
+        .eq("id", branchToDelete.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Success",
+        description: `Branch "${branchToDelete.name}" has been deleted`,
+      });
+
+      // Refresh branch list
+      fetchBranches();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setDeleting(false);
+      setDeleteDialogOpen(false);
+      setBranchToDelete(null);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -159,20 +216,40 @@ export default function BranchDashboard() {
               >
                 <CardHeader>
                   <div className="flex items-start justify-between mb-2">
-                    {branch.logo_url ? (
-                      <img
-                        src={branch.logo_url}
-                        alt={branch.name}
-                        className="w-12 h-12 rounded-lg object-cover"
-                      />
-                    ) : (
-                      <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
-                        <Building2 className="h-6 w-6 text-muted-foreground" />
-                      </div>
-                    )}
-                    <Badge className={getStatusColor(branch.status)}>
-                      {branch.status}
-                    </Badge>
+                    <div className="flex items-center gap-3">
+                      {branch.logo_url ? (
+                        <img
+                          src={branch.logo_url}
+                          alt={branch.name}
+                          className="w-12 h-12 rounded-lg object-cover"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-muted flex items-center justify-center">
+                          <Building2 className="h-6 w-6 text-muted-foreground" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={getStatusColor(branch.status)}>
+                        {branch.status}
+                      </Badge>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8">
+                            <MoreVertical className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-destructive focus:text-destructive"
+                            onClick={(e) => handleDeleteClick(branch, e)}
+                          >
+                            <Trash2 className="h-4 w-4 mr-2" />
+                            Delete Branch
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                   <CardTitle className="text-xl">{branch.name}</CardTitle>
                   <CardDescription className="line-clamp-2">
@@ -196,6 +273,29 @@ export default function BranchDashboard() {
           </div>
         )}
       </div>
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Branch</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete <strong>{branchToDelete?.name}</strong>?
+              <br /><br />
+              This action cannot be undone. All associated data including staff assignments, services, and appointments will be affected.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmDelete}
+              disabled={deleting}
+              className="bg-destructive hover:bg-destructive/90"
+            >
+              {deleting ? "Deleting..." : "Delete Branch"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
