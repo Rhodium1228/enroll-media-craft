@@ -112,6 +112,133 @@ export type Database = {
           },
         ]
       }
+      staff: {
+        Row: {
+          created_at: string
+          created_by: string
+          email: string
+          first_name: string
+          id: string
+          last_name: string
+          phone: string
+          profile_image_url: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          email: string
+          first_name: string
+          id?: string
+          last_name: string
+          phone: string
+          profile_image_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          email?: string
+          first_name?: string
+          id?: string
+          last_name?: string
+          phone?: string
+          profile_image_url?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      staff_branches: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          staff_id: string
+          updated_at: string
+          working_hours: Json
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          staff_id: string
+          updated_at?: string
+          working_hours?: Json
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          staff_id?: string
+          updated_at?: string
+          working_hours?: Json
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_branches_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_branches_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_services: {
+        Row: {
+          branch_id: string
+          created_at: string
+          id: string
+          service_id: string
+          staff_id: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          id?: string
+          service_id: string
+          staff_id: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          id?: string
+          service_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_services_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_services_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

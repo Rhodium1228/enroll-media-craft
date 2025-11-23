@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { BranchEnrolmentWizard } from "@/components/branch/BranchEnrolmentWizard";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { Button } from "@/components/ui/button";
-import { Building2, Plus, LogOut } from "lucide-react";
+import { Building2, Plus, LogOut, LayoutDashboard } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -10,6 +11,7 @@ const Index = () => {
   const [showWizard, setShowWizard] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
@@ -74,6 +76,15 @@ const Index = () => {
           </div>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center">
+            <Button 
+              size="lg" 
+              onClick={() => navigate("/dashboard")}
+              variant="outline"
+              className="gap-2 text-lg px-8 py-6"
+            >
+              <LayoutDashboard className="w-5 h-5" />
+              View My Branches
+            </Button>
             <Button 
               size="lg" 
               onClick={() => setShowWizard(true)}
