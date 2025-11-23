@@ -6,12 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Upload, X, AlertTriangle } from "lucide-react";
 import StaffScheduleBuilder from "./StaffScheduleBuilder";
 import browserImageCompression from "browser-image-compression";
+import { detectScheduleConflicts, groupConflictsByDay } from "@/lib/scheduleConflicts";
+import type { ScheduleConflict } from "@/lib/scheduleConflicts";
 
 interface Staff {
   id: string;
@@ -66,6 +70,9 @@ export default function StaffEnrollmentDialog({
   });
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
+  const [scheduleConflicts, setScheduleConflicts] = useState<ScheduleConflict[]>([]);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [checkingConflicts, setCheckingConflicts] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -156,6 +163,45 @@ export default function StaffEnrollmentDialog({
     setSelectedServices([]);
     setProfileImage(null);
     setProfileImagePreview(null);
+    setScheduleConflicts([]);
+  };
+
+  const checkScheduleConflicts = async (staffId: string): Promise<ScheduleConflict[]> => {
+    try {
+      setCheckingConflicts(true);
+
+      // Fetch all branches where this staff member is assigned
+      const { data: staffBranches, error: branchesError } = await supabase
+        .from("staff_branches")
+        .select(`
+          branch_id,
+          working_hours,
+          branches:branch_id (
+            id,
+            name
+          )
+        `)
+        .eq("staff_id", staffId);
+
+      if (branchesError) throw branchesError;
+
+      // Format the data for conflict detection
+      const existingSchedules = (staffBranches || []).map((sb: any) => ({
+        branch_id: sb.branch_id,
+        branch_name: sb.branches?.name || "Unknown Branch",
+        working_hours: sb.working_hours,
+      }));
+
+      // Detect conflicts between new schedule and existing schedules
+      const conflicts = detectScheduleConflicts(workingHours, existingSchedules, branchId);
+
+      return conflicts;
+    } catch (error: any) {
+      console.error("Error checking schedule conflicts:", error);
+      return [];
+    } finally {
+      setCheckingConflicts(false);
+    }
   };
 
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -211,6 +257,21 @@ export default function StaffEnrollmentDialog({
       });
       return;
     }
+
+    // Check for schedule conflicts if editing existing staff
+    if (staff?.id) {
+      const conflicts = await checkScheduleConflicts(staff.id);
+      if (conflicts.length > 0) {
+        setScheduleConflicts(conflicts);
+        setShowConflictDialog(true);
+        return;
+      }
+    }
+
+    await performSave();
+  };
+
+  const performSave = async () => {
 
     setLoading(true);
 
@@ -317,14 +378,15 @@ export default function StaffEnrollmentDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{staff ? "Edit Staff Member" : "Enroll New Staff"}</DialogTitle>
-          <DialogDescription>
-            {staff ? "Update staff information and schedule" : "Add a new staff member to this branch"}
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{staff ? "Edit Staff Member" : "Enroll New Staff"}</DialogTitle>
+            <DialogDescription>
+              {staff ? "Update staff information and schedule" : "Add a new staff member to this branch"}
+            </DialogDescription>
+          </DialogHeader>
 
         <Tabs defaultValue="personal" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
@@ -438,6 +500,64 @@ export default function StaffEnrollmentDialog({
               <h3 className="font-semibold mb-2">Working Hours for This Branch</h3>
               <p className="text-sm text-muted-foreground">Set the schedule for when this staff member works at this branch</p>
             </div>
+
+            {staff?.id && (
+              <div className="mb-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={async () => {
+                    const conflicts = await checkScheduleConflicts(staff.id);
+                    setScheduleConflicts(conflicts);
+                    if (conflicts.length === 0) {
+                      toast({
+                        title: "No Conflicts",
+                        description: "This schedule doesn't conflict with other branches",
+                      });
+                    }
+                  }}
+                  disabled={checkingConflicts}
+                >
+                  {checkingConflicts ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Checking...
+                    </>
+                  ) : (
+                    "Check for Schedule Conflicts"
+                  )}
+                </Button>
+              </div>
+            )}
+
+            {scheduleConflicts.length > 0 && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Schedule Conflicts Detected</AlertTitle>
+                <AlertDescription>
+                  <div className="mt-2 space-y-2">
+                    {Object.entries(groupConflictsByDay(scheduleConflicts)).map(([day, dayConflicts]) => (
+                      <div key={day}>
+                        <p className="font-semibold capitalize">{day}:</p>
+                        <ul className="list-disc list-inside ml-2 text-sm">
+                          {dayConflicts.map((conflict, idx) => (
+                            <li key={idx}>
+                              <span className="font-medium">{conflict.branch_name}</span> - 
+                              {conflict.conflicting_slots.map((slot, slotIdx) => (
+                                <span key={slotIdx}>
+                                  {" "}{slot.new.start}-{slot.new.end} overlaps with {slot.existing.start}-{slot.existing.end}
+                                </span>
+                              ))}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <StaffScheduleBuilder value={workingHours} onChange={setWorkingHours} />
           </TabsContent>
 
@@ -502,5 +622,63 @@ export default function StaffEnrollmentDialog({
         </div>
       </DialogContent>
     </Dialog>
+
+    <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle className="flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Schedule Conflicts Detected
+          </AlertDialogTitle>
+          <AlertDialogDescription asChild>
+            <div>
+              <p className="mb-3">
+                This staff member's schedule overlaps with their existing schedule at other branches:
+              </p>
+              <Card className="mb-4">
+                <CardHeader>
+                  <CardTitle className="text-sm">Conflicts:</CardTitle>
+                </CardHeader>
+                <CardContent className="text-sm space-y-2">
+                  {Object.entries(groupConflictsByDay(scheduleConflicts)).map(([day, dayConflicts]) => (
+                    <div key={day} className="border-l-2 border-destructive pl-3">
+                      <p className="font-semibold capitalize">{day}:</p>
+                      <ul className="list-disc list-inside ml-2 text-muted-foreground">
+                        {dayConflicts.map((conflict, idx) => (
+                          <li key={idx}>
+                            <span className="font-medium">{conflict.branch_name}</span>
+                            {conflict.conflicting_slots.map((slot, slotIdx) => (
+                              <div key={slotIdx} className="ml-4 text-xs">
+                                {slot.new.start}-{slot.new.end} ↔ {slot.existing.start}-{slot.existing.end}
+                              </div>
+                            ))}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+              <p className="text-sm">
+                Do you want to proceed anyway? The staff member will be scheduled at both locations during the overlapping times.
+              </p>
+            </div>
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Go Back and Adjust</AlertDialogCancel>
+          <AlertDialogAction
+            onClick={async () => {
+              setShowConflictDialog(false);
+              await performSave();
+            }}
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+          >
+            Proceed Anyway
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  </>
   );
 }
