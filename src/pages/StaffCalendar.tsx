@@ -6,12 +6,15 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ArrowLeft, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { detectScheduleConflicts } from "@/lib/scheduleConflicts";
 import type { ScheduleConflict } from "@/lib/scheduleConflicts";
 import MonthCalendar from "@/components/calendar/MonthCalendar";
 import DayDetailDialog from "@/components/calendar/DayDetailDialog";
+import DraggableScheduleBlock from "@/components/calendar/DraggableScheduleBlock";
+import DroppableDayCell from "@/components/calendar/DroppableDayCell";
 
 interface Staff {
   id: string;
@@ -69,6 +72,12 @@ export default function StaffCalendar() {
   const [viewMode, setViewMode] = useState<"week" | "month">("week");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [dragConflicts, setDragConflicts] = useState<ScheduleConflict[]>([]);
+  const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [pendingDrop, setPendingDrop] = useState<{
+    dragData: any;
+    targetDay: string;
+  } | null>(null);
 
   useEffect(() => {
     fetchSchedules();
@@ -216,6 +225,137 @@ export default function StaffCalendar() {
     fetchSchedules();
   };
 
+  const handleDrop = async (dragData: any, targetDay: string) => {
+    // If dropping on the same day, do nothing
+    if (dragData.sourceDay === targetDay) {
+      return;
+    }
+
+    // Check for conflicts before committing
+    const staffSchedule = schedules.find(
+      (s) => s.staff.id === dragData.staffId && s.branch.id === dragData.branchId
+    );
+
+    if (!staffSchedule) return;
+
+    // Create a hypothetical new schedule with the moved slot
+    const newWorkingHours = { ...staffSchedule.working_hours };
+    
+    // Remove from source day
+    const sourceDaySchedule = newWorkingHours[dragData.sourceDay] || { slots: [] };
+    const updatedSourceSlots = sourceDaySchedule.slots?.filter(
+      (s: any) => !(s.start === dragData.slot.start && s.end === dragData.slot.end)
+    ) || [];
+    
+    newWorkingHours[dragData.sourceDay] = {
+      closed: updatedSourceSlots.length === 0,
+      slots: updatedSourceSlots,
+    };
+
+    // Add to target day
+    const targetDaySchedule = newWorkingHours[targetDay] || { slots: [] };
+    const updatedTargetSlots = [...(targetDaySchedule.slots || []), dragData.slot];
+    
+    newWorkingHours[targetDay] = {
+      closed: false,
+      slots: updatedTargetSlots,
+    };
+
+    // Check for conflicts with other branches
+    const otherSchedules = schedules
+      .filter((s) => s.staff.id === dragData.staffId && s.branch.id !== dragData.branchId)
+      .map((s) => ({
+        branch_id: s.branch.id,
+        branch_name: s.branch.name,
+        working_hours: s.working_hours,
+      }));
+
+    const conflicts = detectScheduleConflicts(
+      newWorkingHours,
+      otherSchedules,
+      dragData.branchId
+    );
+
+    // Filter conflicts to only show those affecting the target day
+    const targetDayConflicts = conflicts.filter((c) => c.day === targetDay);
+
+    if (targetDayConflicts.length > 0) {
+      // Show conflict warning
+      setDragConflicts(targetDayConflicts);
+      setPendingDrop({ dragData, targetDay });
+      setShowConflictDialog(true);
+    } else {
+      // No conflicts, proceed with the move
+      await performScheduleMove(dragData, targetDay, newWorkingHours);
+    }
+  };
+
+  const performScheduleMove = async (
+    dragData: any,
+    targetDay: string,
+    newWorkingHours: any
+  ) => {
+    try {
+      const { error } = await supabase
+        .from("staff_branches")
+        .update({ working_hours: newWorkingHours })
+        .eq("staff_id", dragData.staffId)
+        .eq("branch_id", dragData.branchId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Schedule Updated",
+        description: `Moved ${dragData.staffName}'s shift from ${dragData.sourceDay} to ${targetDay}`,
+      });
+
+      fetchSchedules();
+    } catch (error: any) {
+      toast({
+        title: "Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleConflictConfirm = async () => {
+    if (!pendingDrop) return;
+
+    const staffSchedule = schedules.find(
+      (s) => s.staff.id === pendingDrop.dragData.staffId && s.branch.id === pendingDrop.dragData.branchId
+    );
+
+    if (!staffSchedule) return;
+
+    // Recreate the new working hours
+    const newWorkingHours = { ...staffSchedule.working_hours };
+    
+    const sourceDaySchedule = newWorkingHours[pendingDrop.dragData.sourceDay] || { slots: [] };
+    const updatedSourceSlots = sourceDaySchedule.slots?.filter(
+      (s: any) => !(s.start === pendingDrop.dragData.slot.start && s.end === pendingDrop.dragData.slot.end)
+    ) || [];
+    
+    newWorkingHours[pendingDrop.dragData.sourceDay] = {
+      closed: updatedSourceSlots.length === 0,
+      slots: updatedSourceSlots,
+    };
+
+    const targetDaySchedule = newWorkingHours[pendingDrop.targetDay] || { slots: [] };
+    const updatedTargetSlots = [...(targetDaySchedule.slots || []), pendingDrop.dragData.slot];
+    
+    newWorkingHours[pendingDrop.targetDay] = {
+      closed: false,
+      slots: updatedTargetSlots,
+    };
+
+    await performScheduleMove(pendingDrop.dragData, pendingDrop.targetDay, newWorkingHours);
+    
+    setShowConflictDialog(false);
+    setPendingDrop(null);
+    setDragConflicts([]);
+  };
+
   const filteredSchedules =
     selectedStaff === "all"
       ? schedules
@@ -256,7 +396,7 @@ export default function StaffCalendar() {
               </h1>
               <p className="text-muted-foreground mt-2">
                 {viewMode === "week" 
-                  ? "Weekly schedule overview across all branches"
+                  ? "Drag and drop schedule blocks to reschedule staff between days"
                   : "Monthly calendar with staff availability"}
               </p>
             </div>
@@ -383,23 +523,30 @@ export default function StaffCalendar() {
                                 );
 
                                 return (
-                                  <div
+                                  <DroppableDayCell
                                     key={day.key}
-                                    className={`min-h-[60px] rounded-lg border-2 p-2 transition-all hover:shadow-md ${
+                                    day={day.key}
+                                    onDrop={handleDrop}
+                                    className={
                                       hasConflictOnDay
-                                        ? "border-destructive bg-destructive/10 animate-pulse"
-                                        : "border-border"
-                                    }`}
+                                        ? "border-destructive bg-destructive/10"
+                                        : ""
+                                    }
                                   >
                                     {slots ? (
                                       <div className="space-y-1">
                                         {slots.map((slot: any, idx: number) => (
-                                          <div
+                                          <DraggableScheduleBlock
                                             key={idx}
-                                            className={`text-xs p-1 rounded ${schedule.branch_color} text-white font-medium hover-scale`}
-                                          >
-                                            {slot.start} - {slot.end}
-                                          </div>
+                                            staffId={staff.id}
+                                            staffName={`${staff.first_name} ${staff.last_name}`}
+                                            branchId={schedule.branch.id}
+                                            branchName={schedule.branch.name}
+                                            branchColor={schedule.branch_color}
+                                            day={day.key}
+                                            slot={slot}
+                                            hasConflict={hasConflictOnDay}
+                                          />
                                         ))}
                                         {hasConflictOnDay && (
                                           <div className="flex items-center gap-1 text-xs text-destructive font-semibold mt-1">
@@ -413,7 +560,7 @@ export default function StaffCalendar() {
                                         Off
                                       </div>
                                     )}
-                                  </div>
+                                  </DroppableDayCell>
                                 );
                               })}
                             </div>
@@ -437,6 +584,59 @@ export default function StaffCalendar() {
           conflicts={conflicts}
           onScheduleUpdate={handleScheduleUpdate}
         />
+
+        <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Schedule Conflict Detected
+              </AlertDialogTitle>
+              <AlertDialogDescription asChild>
+                <div>
+                  <p className="mb-3">
+                    Moving this schedule will create a conflict with an existing assignment:
+                  </p>
+                  <Card className="mb-4">
+                    <CardContent className="pt-4 text-sm space-y-2">
+                      {dragConflicts.map((conflict, idx) => (
+                        <div key={idx} className="border-l-2 border-destructive pl-3">
+                          <p className="font-semibold capitalize">{conflict.day}:</p>
+                          <p className="text-muted-foreground">
+                            Conflicts with schedule at <span className="font-medium">{conflict.branch_name}</span>
+                          </p>
+                          {conflict.conflicting_slots.map((slot, slotIdx) => (
+                            <div key={slotIdx} className="text-xs ml-2 text-muted-foreground">
+                              {slot.new.start}-{slot.new.end} ↔ {slot.existing.start}-{slot.existing.end}
+                            </div>
+                          ))}
+                        </div>
+                      ))}
+                    </CardContent>
+                  </Card>
+                  <p className="text-sm">
+                    Do you want to proceed anyway? The staff member will be scheduled at both locations during the overlapping times.
+                  </p>
+                </div>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => {
+                setShowConflictDialog(false);
+                setPendingDrop(null);
+                setDragConflicts([]);
+              }}>
+                Cancel Move
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConflictConfirm}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Proceed Anyway
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         {/* Legend */}
         <Card className="mt-8">
@@ -465,6 +665,12 @@ export default function StaffCalendar() {
               <div className="flex items-center gap-2">
                 <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive/10"></div>
                 <span className="text-sm">Schedule Conflict</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded bg-muted border-2 border-primary flex items-center justify-center">
+                  <span className="text-[8px]">⋮⋮</span>
+                </div>
+                <span className="text-sm">Draggable (Week View)</span>
               </div>
             </div>
           </CardContent>
