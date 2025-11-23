@@ -62,21 +62,21 @@ const BranchDashboard = () => {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-muted-foreground">Enterprise-level insights and performance metrics</p>
+          <h1 className="text-2xl sm:text-3xl font-bold">Analytics Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">Enterprise-level insights and performance metrics</p>
         </div>
-        <Button onClick={() => navigate('/')}>
+        <Button onClick={() => navigate('/')} className="w-full sm:w-auto">
           <Plus className="mr-2 h-4 w-4" />
           Create New Branch
         </Button>
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <StatCard
           title="Total Revenue"
           value={`$${analytics.kpis.totalRevenue.toFixed(2)}`}
@@ -129,7 +129,7 @@ const BranchDashboard = () => {
       )}
 
       {/* Three Column Layout */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
         {/* Top Services */}
         {analytics.topServices.length > 0 && (
           <TopServicesCard services={analytics.topServices} />
