@@ -5,10 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { detectScheduleConflicts } from "@/lib/scheduleConflicts";
 import type { ScheduleConflict } from "@/lib/scheduleConflicts";
+import MonthCalendar from "@/components/calendar/MonthCalendar";
+import DayDetailDialog from "@/components/calendar/DayDetailDialog";
 
 interface Staff {
   id: string;
@@ -63,6 +66,9 @@ export default function StaffCalendar() {
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [allStaff, setAllStaff] = useState<Staff[]>([]);
   const [conflicts, setConflicts] = useState<Map<string, ScheduleConflict[]>>(new Map());
+  const [viewMode, setViewMode] = useState<"week" | "month">("week");
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [dayDialogOpen, setDayDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchSchedules();
@@ -201,6 +207,15 @@ export default function StaffCalendar() {
     return staffConflicts.some((c) => c.day === day);
   };
 
+  const handleDayClick = (date: Date) => {
+    setSelectedDate(date);
+    setDayDialogOpen(true);
+  };
+
+  const handleScheduleUpdate = () => {
+    fetchSchedules();
+  };
+
   const filteredSchedules =
     selectedStaff === "all"
       ? schedules
@@ -240,23 +255,33 @@ export default function StaffCalendar() {
                 Staff Calendar
               </h1>
               <p className="text-muted-foreground mt-2">
-                Weekly schedule overview across all branches
+                {viewMode === "week" 
+                  ? "Weekly schedule overview across all branches"
+                  : "Monthly calendar with staff availability"}
               </p>
             </div>
-            <div className="w-64">
-              <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by staff" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Staff</SelectItem>
-                  {allStaff.map((staff) => (
-                    <SelectItem key={staff.id} value={staff.id}>
-                      {staff.first_name} {staff.last_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="flex items-center gap-3">
+              <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "week" | "month")}>
+                <TabsList>
+                  <TabsTrigger value="week">Week View</TabsTrigger>
+                  <TabsTrigger value="month">Month View</TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <div className="w-64">
+                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Filter by staff" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Staff</SelectItem>
+                    {allStaff.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.first_name} {staff.last_name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -275,19 +300,26 @@ export default function StaffCalendar() {
           )}
         </div>
 
-        {groupedByStaff.size === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No schedules found</h3>
-                <p className="text-muted-foreground">
-                  Start by enrolling staff members to your branches
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+        {viewMode === "month" ? (
+          <MonthCalendar
+            schedules={filteredSchedules}
+            conflicts={conflicts}
+            onDayClick={handleDayClick}
+          />
         ) : (
+          groupedByStaff.size === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No schedules found</h3>
+                  <p className="text-muted-foreground">
+                    Start by enrolling staff members to your branches
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
           <div className="space-y-8">
             {Array.from(groupedByStaff.entries()).map(([staffId, staffSchedules]) => {
               const staff = staffSchedules[0].staff;
@@ -394,7 +426,17 @@ export default function StaffCalendar() {
               );
             })}
           </div>
+          )
         )}
+
+        <DayDetailDialog
+          open={dayDialogOpen}
+          onOpenChange={setDayDialogOpen}
+          date={selectedDate}
+          schedules={schedules}
+          conflicts={conflicts}
+          onScheduleUpdate={handleScheduleUpdate}
+        />
 
         {/* Legend */}
         <Card className="mt-8">
