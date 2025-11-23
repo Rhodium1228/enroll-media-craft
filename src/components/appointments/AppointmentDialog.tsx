@@ -261,7 +261,7 @@ export const AppointmentDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-full sm:max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle>Book Appointment</DialogTitle>
           <DialogDescription>
@@ -348,9 +348,9 @@ export const AppointmentDialog = ({
             <div className="space-y-4 pt-4 border-t">
               <div>
                 <Label>Available Time Slots *</Label>
-                <div className="grid grid-cols-4 gap-2 mt-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 mt-2">
                   {availableSlots.length === 0 ? (
-                    <p className="col-span-4 text-sm text-muted-foreground">
+                    <p className="col-span-full text-sm text-muted-foreground">
                       No available slots for this date
                     </p>
                   ) : (
@@ -359,6 +359,7 @@ export const AppointmentDialog = ({
                         key={idx}
                         variant={selectedTimeSlot === slot.start ? "default" : "outline"}
                         size="sm"
+                        className="text-xs sm:text-sm"
                         onClick={() => setSelectedTimeSlot(slot.start)}
                       >
                         {slot.start}

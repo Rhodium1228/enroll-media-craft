@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Card } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   AppointmentWithDetails,
   groupAppointmentsByStaff,
@@ -22,7 +23,8 @@ export const AppointmentTimelineView = ({
   date,
   onAppointmentClick,
 }: AppointmentTimelineViewProps) => {
-  const pixelsPerHour = 80;
+  const isMobile = useIsMobile();
+  const pixelsPerHour = isMobile ? 40 : 80;
   const startHour = 7; // 7 AM
   const endHour = 21; // 9 PM
   const totalHours = endHour - startHour;
@@ -69,8 +71,8 @@ export const AppointmentTimelineView = ({
     <div className="space-y-4">
       {/* Time labels */}
       <div className="flex items-center">
-        <div className="w-32 flex-shrink-0" />
-        <div className="relative flex-1">
+        <div className="w-20 md:w-32 flex-shrink-0" />
+        <ScrollArea className="flex-1">
           <div className="flex" style={{ width: `${totalHours * pixelsPerHour}px` }}>
             {timeLabels.map((label, idx) => (
               <div
@@ -82,7 +84,7 @@ export const AppointmentTimelineView = ({
               </div>
             ))}
           </div>
-        </div>
+        </ScrollArea>
       </div>
 
       {/* Timeline grid and appointments */}
@@ -97,59 +99,61 @@ export const AppointmentTimelineView = ({
             return (
               <div key={staffId} className="flex items-center">
                 {/* Staff info */}
-                <div className="w-32 flex-shrink-0 flex items-center gap-2 pr-4">
-                  <Avatar className="h-8 w-8">
+                <div className="w-20 md:w-32 flex-shrink-0 flex items-center gap-2 pr-2 md:pr-4">
+                  <Avatar className="h-6 w-6 md:h-8 md:w-8">
                     <AvatarImage src={staff.profile_image_url} />
-                    <AvatarFallback>
+                    <AvatarFallback className="text-xs">
                       {staff.first_name[0]}
                       {staff.last_name[0]}
                     </AvatarFallback>
                   </Avatar>
-                  <span className="text-sm font-medium truncate">
+                  <span className="text-xs md:text-sm font-medium truncate hidden md:inline">
                     {staff.first_name} {staff.last_name}
+                  </span>
+                  <span className="text-xs font-medium truncate md:hidden">
+                    {staff.first_name[0]}{staff.last_name[0]}
                   </span>
                 </div>
 
                 {/* Timeline */}
-                <div className="relative flex-1 h-16">
-                  {/* Grid background */}
-                  <div
-                    className="absolute inset-0 flex"
-                    style={{ width: `${totalHours * pixelsPerHour}px` }}
-                  >
-                    {Array.from({ length: totalHours }).map((_, idx) => (
-                      <div
-                        key={idx}
-                        className="border-r border-border"
-                        style={{ width: `${pixelsPerHour}px` }}
-                      />
+                <ScrollArea className="flex-1">
+                  <div className="relative h-16" style={{ width: `${totalHours * pixelsPerHour}px` }}>
+                    {/* Grid background */}
+                    <div className="absolute inset-0 flex">
+                      {Array.from({ length: totalHours }).map((_, idx) => (
+                        <div
+                          key={idx}
+                          className="border-r border-border"
+                          style={{ width: `${pixelsPerHour}px` }}
+                        />
+                      ))}
+                    </div>
+
+                    {/* Appointment blocks */}
+                    {staffAppointments.map((appointment) => (
+                      <Card
+                        key={appointment.id}
+                        className={`absolute top-1 h-14 cursor-pointer hover:shadow-md transition-shadow ${getAppointmentStatusColor(appointment.status)} border-l-4 overflow-hidden`}
+                        style={getAppointmentStyle(appointment)}
+                        onClick={() => onAppointmentClick?.(appointment)}
+                      >
+                        <div className="p-1 md:p-2 h-full overflow-hidden">
+                          <div className="text-xs font-semibold truncate">
+                            {appointment.customer_name}
+                          </div>
+                          {appointment.service && (
+                            <div className="text-xs text-muted-foreground truncate hidden md:block">
+                              {appointment.service.title}
+                            </div>
+                          )}
+                          <div className="text-xs text-muted-foreground">
+                            {formatTimeRange(appointment.start_time, appointment.end_time)}
+                          </div>
+                        </div>
+                      </Card>
                     ))}
                   </div>
-
-                  {/* Appointment blocks */}
-                  {staffAppointments.map((appointment) => (
-                    <Card
-                      key={appointment.id}
-                      className={`absolute top-1 h-14 cursor-pointer hover:shadow-md transition-shadow ${getAppointmentStatusColor(appointment.status)} border-l-4 overflow-hidden`}
-                      style={getAppointmentStyle(appointment)}
-                      onClick={() => onAppointmentClick?.(appointment)}
-                    >
-                      <div className="p-2 h-full overflow-hidden">
-                        <div className="text-xs font-semibold truncate">
-                          {appointment.customer_name}
-                        </div>
-                        {appointment.service && (
-                          <div className="text-xs text-muted-foreground truncate">
-                            {appointment.service.title}
-                          </div>
-                        )}
-                        <div className="text-xs text-muted-foreground">
-                          {formatTimeRange(appointment.start_time, appointment.end_time)}
-                        </div>
-                      </div>
-                    </Card>
-                  ))}
-                </div>
+                </ScrollArea>
               </div>
             );
           })}
