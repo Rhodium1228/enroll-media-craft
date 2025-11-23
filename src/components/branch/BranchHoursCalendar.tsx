@@ -98,7 +98,7 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
     fetchStaffAssignments();
     
     // Set up realtime subscription for staff assignments
-    const channel = supabase
+    const staffChannel = supabase
       .channel('branch-staff-assignments')
       .on(
         'postgres_changes',
@@ -108,14 +108,34 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
           table: 'staff_date_assignments',
           filter: `branch_id=eq.${branchId}`,
         },
-        () => {
+        (payload) => {
+          console.log('Staff assignment change detected:', payload);
           fetchStaffAssignments();
         }
       )
       .subscribe();
 
+    // Set up realtime subscription for branch schedule overrides
+    const overridesChannel = supabase
+      .channel('branch-overrides-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'branch_schedule_overrides',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        (payload) => {
+          console.log('Branch override change detected:', payload);
+          fetchOverrides();
+        }
+      )
+      .subscribe();
+
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(staffChannel);
+      supabase.removeChannel(overridesChannel);
     };
   }, [branchId, refreshTrigger]);
 
