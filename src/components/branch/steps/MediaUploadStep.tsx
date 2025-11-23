@@ -1,8 +1,24 @@
+import { useState } from "react";
 import { FileUploadZone } from "@/components/branch/FileUploadZone";
 import { ImagePreview } from "@/components/branch/ImagePreview";
 import { FilePreview } from "@/components/branch/FilePreview";
+import { ImageCropper } from "@/components/branch/ImageCropper";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Info } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Info, Sparkles } from "lucide-react";
+import { toast } from "sonner";
+import {
+  validateLogo,
+  validateHero,
+  validateGalleryImage,
+  validateComplianceDoc,
+} from "@/lib/validation/branchSchema";
+import {
+  compressLogo,
+  compressHeroImage,
+  compressGalleryImage,
+  formatFileSize,
+} from "@/lib/imageCompression";
 
 interface MediaUploadStepProps {
   data: {
@@ -15,24 +31,138 @@ interface MediaUploadStepProps {
 }
 
 export const MediaUploadStep = ({ data, updateData }: MediaUploadStepProps) => {
-  const handleLogoUpload = (files: File[]) => {
-    if (files.length > 0) {
-      updateData({ logo_file: files[0] });
+  const [cropConfig, setCropConfig] = useState<{
+    image: string;
+    aspectRatio: number;
+    type: "logo" | "hero";
+    originalFile: File;
+  } | null>(null);
+
+  const handleLogoUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    const file = files[0];
+    const error = validateLogo(file);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    // Show cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropConfig({
+        image: reader.result as string,
+        aspectRatio: 1, // 1:1 square
+        type: "logo",
+        originalFile: file,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleHeroUpload = async (files: File[]) => {
+    if (files.length === 0) return;
+
+    const file = files[0];
+    const error = validateHero(file);
+    if (error) {
+      toast.error(error);
+      return;
+    }
+
+    // Show cropper
+    const reader = new FileReader();
+    reader.onload = () => {
+      setCropConfig({
+        image: reader.result as string,
+        aspectRatio: 16 / 9, // 16:9 landscape
+        type: "hero",
+        originalFile: file,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    if (!cropConfig) return;
+
+    try {
+      const croppedFile = new File([croppedBlob], cropConfig.originalFile.name, {
+        type: "image/jpeg",
+        lastModified: Date.now(),
+      });
+
+      // Compress the cropped image
+      let compressedResult;
+      if (cropConfig.type === "logo") {
+        compressedResult = await compressLogo(croppedFile);
+        toast.success(
+          `Logo compressed: ${formatFileSize(compressedResult.originalSize)} → ${formatFileSize(
+            compressedResult.compressedSize
+          )}`
+        );
+        updateData({ logo_file: compressedResult.file });
+      } else {
+        compressedResult = await compressHeroImage(croppedFile);
+        toast.success(
+          `Hero image compressed: ${formatFileSize(
+            compressedResult.originalSize
+          )} → ${formatFileSize(compressedResult.compressedSize)}`
+        );
+        updateData({ hero_file: compressedResult.file });
+      }
+
+      setCropConfig(null);
+    } catch (error) {
+      console.error("Error processing image:", error);
+      toast.error("Failed to process image");
     }
   };
 
-  const handleHeroUpload = (files: File[]) => {
-    if (files.length > 0) {
-      updateData({ hero_file: files[0] });
-    }
-  };
+  const handleGalleryUpload = async (files: File[]) => {
+    const validFiles: File[] = [];
 
-  const handleGalleryUpload = (files: File[]) => {
-    updateData({ gallery_files: [...data.gallery_files, ...files] });
+    for (const file of files) {
+      const error = validateGalleryImage(file);
+      if (error) {
+        toast.error(`${file.name}: ${error}`);
+        continue;
+      }
+
+      try {
+        const compressed = await compressGalleryImage(file);
+        validFiles.push(compressed.file);
+        toast.success(
+          `${file.name} compressed: ${formatFileSize(compressed.originalSize)} → ${formatFileSize(
+            compressed.compressedSize
+          )}`
+        );
+      } catch (error) {
+        toast.error(`Failed to compress ${file.name}`);
+      }
+    }
+
+    if (validFiles.length > 0) {
+      updateData({ gallery_files: [...data.gallery_files, ...validFiles] });
+    }
   };
 
   const handleComplianceUpload = (files: File[]) => {
-    updateData({ compliance_files: [...data.compliance_files, ...files] });
+    const validFiles: File[] = [];
+
+    for (const file of files) {
+      const error = validateComplianceDoc(file);
+      if (error) {
+        toast.error(`${file.name}: ${error}`);
+        continue;
+      }
+      validFiles.push(file);
+    }
+
+    if (validFiles.length > 0) {
+      updateData({ compliance_files: [...data.compliance_files, ...validFiles] });
+    }
   };
 
   const removeGalleryImage = (index: number) => {
@@ -48,21 +178,42 @@ export const MediaUploadStep = ({ data, updateData }: MediaUploadStepProps) => {
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h3 className="text-xl font-semibold mb-4">Branch Media & Documents</h3>
-        <p className="text-muted-foreground mb-6">
-          Upload branch branding, images, and compliance documents
-        </p>
-      </div>
+    <>
+      {cropConfig && (
+        <ImageCropper
+          image={cropConfig.image}
+          aspectRatio={cropConfig.aspectRatio}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropConfig(null)}
+          title={
+            cropConfig.type === "logo"
+              ? "Crop Logo (1:1 Square)"
+              : "Crop Hero Image (16:9 Landscape)"
+          }
+        />
+      )}
 
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertDescription>
-          <strong>Required:</strong> Logo (2MB max) and Hero Image (4MB max).{" "}
-          <strong>Optional:</strong> Gallery images and compliance documents (10MB max each).
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-6">
+        <div>
+          <h3 className="text-xl font-semibold mb-4">Branch Media & Documents</h3>
+          <p className="text-muted-foreground mb-6">
+            Upload branch branding, images, and compliance documents
+          </p>
+        </div>
+
+        <Alert>
+          <Info className="h-4 w-4" />
+          <AlertDescription className="flex items-center justify-between">
+            <span>
+              <strong>Required:</strong> Logo (2MB max) and Hero Image (4MB max).{" "}
+              <strong>Optional:</strong> Gallery images and compliance documents (10MB max each).
+            </span>
+            <Badge variant="secondary" className="gap-1">
+              <Sparkles className="w-3 h-3" />
+              Auto-compressed
+            </Badge>
+          </AlertDescription>
+        </Alert>
 
       <div className="space-y-6">
         <div className="space-y-3">
@@ -156,7 +307,8 @@ export const MediaUploadStep = ({ data, updateData }: MediaUploadStepProps) => {
             />
           )}
         </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 };
