@@ -388,71 +388,78 @@ export default function StaffEnrollmentDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[95vw] sm:max-w-3xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>{staff ? "Edit Staff Member" : "Enroll New Staff"}</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">{staff ? "Edit Staff Member" : "Enroll New Staff"}</DialogTitle>
+            <DialogDescription className="text-sm">
               {staff ? "Update staff information and schedule" : "Add a new staff member to this branch"}
             </DialogDescription>
           </DialogHeader>
 
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-5">
-            <TabsTrigger value="personal">Personal Info</TabsTrigger>
-            <TabsTrigger value="schedule">Schedule</TabsTrigger>
-            <TabsTrigger value="services">Services</TabsTrigger>
-            <TabsTrigger value="overrides" disabled={!staff?.id}>Date Overrides</TabsTrigger>
-            <TabsTrigger value="leave" disabled={!staff?.id}>Leave</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-5 h-auto">
+            <TabsTrigger value="personal" className="text-xs sm:text-sm px-2 py-2">Personal Info</TabsTrigger>
+            <TabsTrigger value="schedule" className="text-xs sm:text-sm px-2 py-2">Schedule</TabsTrigger>
+            <TabsTrigger value="services" className="text-xs sm:text-sm px-2 py-2">Services</TabsTrigger>
+            <TabsTrigger value="overrides" disabled={!staff?.id} className="text-xs sm:text-sm px-2 py-2 col-span-1 sm:col-span-1">
+              <span className="hidden sm:inline">Date Overrides</span>
+              <span className="sm:hidden">Overrides</span>
+            </TabsTrigger>
+            <TabsTrigger value="leave" disabled={!staff?.id} className="text-xs sm:text-sm px-2 py-2">Leave</TabsTrigger>
           </TabsList>
 
           <TabsContent value="personal" className="space-y-4 mt-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="firstName">First Name *</Label>
+                <Label htmlFor="firstName" className="text-sm">First Name *</Label>
                 <Input
                   id="firstName"
                   value={formData.firstName}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
                   placeholder="John"
+                  className="text-base"
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="lastName">Last Name *</Label>
+                <Label htmlFor="lastName" className="text-sm">Last Name *</Label>
                 <Input
                   id="lastName"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
                   placeholder="Doe"
+                  className="text-base"
                 />
               </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email">Email *</Label>
+              <Label htmlFor="email" className="text-sm">Email *</Label>
               <Input
                 id="email"
                 type="email"
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 placeholder="john.doe@example.com"
+                className="text-base"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone">Phone *</Label>
+              <Label htmlFor="phone" className="text-sm">Phone *</Label>
               <Input
                 id="phone"
                 type="tel"
                 value={formData.phone}
                 onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
                 placeholder="+1234567890"
+                className="text-base"
               />
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status">Status</Label>
+              <Label htmlFor="status" className="text-sm">Status</Label>
               <Select value={formData.status} onValueChange={(value) => setFormData({ ...formData, status: value })}>
-                <SelectTrigger>
+                <SelectTrigger className="text-base">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -464,30 +471,30 @@ export default function StaffEnrollmentDialog({
             </div>
 
             <div className="space-y-2">
-              <Label>Profile Image (Optional)</Label>
+              <Label className="text-sm">Profile Image (Optional)</Label>
               {profileImagePreview ? (
-                <div className="relative w-32 h-32">
+                <div className="relative w-24 h-24 sm:w-32 sm:h-32">
                   <img
                     src={profileImagePreview}
                     alt="Profile preview"
-                    className="w-32 h-32 rounded-full object-cover"
+                    className="w-24 h-24 sm:w-32 sm:h-32 rounded-full object-cover"
                   />
                   <Button
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="absolute -top-2 -right-2"
+                    className="absolute -top-2 -right-2 h-8 w-8 sm:h-10 sm:w-10"
                     onClick={() => {
                       setProfileImage(null);
                       setProfileImagePreview(null);
                     }}
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3 w-3 sm:h-4 sm:w-4" />
                   </Button>
                 </div>
               ) : (
                 <div className="flex items-center gap-2">
-                  <Button type="button" variant="outline" asChild>
+                  <Button type="button" variant="outline" asChild className="text-sm">
                     <label htmlFor="profile-image" className="cursor-pointer">
                       <Upload className="h-4 w-4 mr-2" />
                       Upload Image
@@ -680,11 +687,11 @@ export default function StaffEnrollmentDialog({
           </TabsContent>
         </Tabs>
 
-        <div className="flex justify-end gap-2 mt-6">
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading}>
+        <div className="flex flex-col-reverse sm:flex-row justify-end gap-2 mt-6">
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={loading} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button onClick={handleSubmit} disabled={loading}>
+          <Button onClick={handleSubmit} disabled={loading} className="w-full sm:w-auto">
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -699,15 +706,15 @@ export default function StaffEnrollmentDialog({
     </Dialog>
 
     <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
-      <AlertDialogContent>
+      <AlertDialogContent className="max-w-[95vw] sm:max-w-lg mx-4">
         <AlertDialogHeader>
-          <AlertDialogTitle className="flex items-center gap-2">
+          <AlertDialogTitle className="flex items-center gap-2 text-base sm:text-lg">
             <AlertTriangle className="h-5 w-5 text-destructive" />
             Schedule Conflicts Detected
           </AlertDialogTitle>
           <AlertDialogDescription asChild>
             <div>
-              <p className="mb-3">
+              <p className="mb-3 text-sm">
                 This staff member's schedule overlaps with their existing schedule at other branches:
               </p>
               <Card className="mb-4">
@@ -740,14 +747,14 @@ export default function StaffEnrollmentDialog({
             </div>
           </AlertDialogDescription>
         </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Go Back and Adjust</AlertDialogCancel>
+        <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+          <AlertDialogCancel className="w-full sm:w-auto">Go Back and Adjust</AlertDialogCancel>
           <AlertDialogAction
             onClick={async () => {
               setShowConflictDialog(false);
               await performSave();
             }}
-            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            className="bg-destructive text-destructive-foreground hover:bg-destructive/90 w-full sm:w-auto"
           >
             Proceed Anyway
           </AlertDialogAction>
