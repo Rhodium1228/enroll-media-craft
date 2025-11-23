@@ -9,11 +9,14 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Users, AlertTriangle, Plus, Clock } from "lucide-react";
+import { Users, AlertTriangle, Plus, Clock, Calendar as CalendarIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import type { DateAssignmentConflict, TimeSlot } from "@/lib/dateAssignmentUtils";
 import { detectDateAssignmentConflicts, formatConflictMessage } from "@/lib/dateAssignmentUtils";
+import { AppointmentDialog } from "@/components/appointments/AppointmentDialog";
+import { AppointmentCard } from "@/components/appointments/AppointmentCard";
+import { AppointmentWithDetails } from "@/lib/appointmentUtils";
 
 interface Staff {
   id: string;
@@ -66,12 +69,15 @@ export default function DayDetailDialog({
   const [saving, setSaving] = useState(false);
   const [conflictWarning, setConflictWarning] = useState<DateAssignmentConflict[]>([]);
   const [showConflictDialog, setShowConflictDialog] = useState(false);
+  const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
+  const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
 
   useEffect(() => {
     if (open) {
       fetchStaffAndBranches();
+      fetchAppointments();
     }
-  }, [open]);
+  }, [open, date]);
 
   useEffect(() => {
     if (open && date) {
@@ -90,6 +96,18 @@ export default function DayDetailDialog({
           (payload) => {
             console.log('Assignment change for selected date:', payload);
             onScheduleUpdate();
+          }
+        )
+        .on(
+          'postgres_changes',
+          {
+            event: '*',
+            schema: 'public',
+            table: 'appointments',
+            filter: `date=eq.${dateStr}`
+          },
+          () => {
+            fetchAppointments();
           }
         )
         .subscribe();
@@ -124,6 +142,24 @@ export default function DayDetailDialog({
     } catch (error: any) {
       console.error("Error fetching data:", error);
     }
+  };
+
+  const fetchAppointments = async () => {
+    if (!date) return;
+    
+    const dateStr = format(date, "yyyy-MM-dd");
+    const { data } = await supabase
+      .from("appointments")
+      .select(`
+        *,
+        staff:staff_id (id, first_name, last_name, profile_image_url),
+        service:service_id (id, title, duration, cost),
+        branch:branch_id (id, name)
+      `)
+      .eq("date", dateStr)
+      .order("start_time");
+
+    setAppointments((data as any) || []);
   };
 
   if (!date) return null;
@@ -243,9 +279,12 @@ export default function DayDetailDialog({
           </DialogHeader>
 
           <Tabs defaultValue="schedules" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="schedules">
                 Assignments ({daySchedules.length})
+              </TabsTrigger>
+              <TabsTrigger value="appointments">
+                Appointments ({appointments.length})
               </TabsTrigger>
               <TabsTrigger value="assign">Quick Assign</TabsTrigger>
             </TabsList>
@@ -336,6 +375,40 @@ export default function DayDetailDialog({
               )}
             </TabsContent>
 
+            <TabsContent value="appointments" className="mt-6 space-y-4">
+              <div className="flex justify-between items-center">
+                <p className="text-sm text-muted-foreground">
+                  {appointments.length} appointment{appointments.length !== 1 ? "s" : ""} scheduled
+                </p>
+                <Button onClick={() => setShowAppointmentDialog(true)} size="sm">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Book Appointment
+                </Button>
+              </div>
+
+              {appointments.length === 0 ? (
+                <Card>
+                  <CardContent className="pt-6">
+                    <div className="text-center py-8">
+                      <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                      <p className="text-muted-foreground">No appointments for this day</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="space-y-3">
+                  {appointments.map((appointment) => (
+                    <AppointmentCard
+                      key={appointment.id}
+                      appointment={appointment}
+                      onDelete={() => fetchAppointments()}
+                      onUpdateStatus={() => fetchAppointments()}
+                    />
+                  ))}
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="assign" className="mt-6">
               <Card>
                 <CardHeader>
@@ -412,6 +485,16 @@ export default function DayDetailDialog({
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      <AppointmentDialog
+        open={showAppointmentDialog}
+        onOpenChange={setShowAppointmentDialog}
+        prefilledDate={date || undefined}
+        onSuccess={() => {
+          fetchAppointments();
+          setShowAppointmentDialog(false);
+        }}
+      />
 
       <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
         <AlertDialogContent>

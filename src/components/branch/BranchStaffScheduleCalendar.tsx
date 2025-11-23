@@ -8,7 +8,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, parseISO } from "date-fns";
 import { DateStaffAssignmentForm } from "./DateStaffAssignmentForm";
-import { Users, Edit, Trash2, AlertCircle } from "lucide-react";
+import { Users, Edit, Trash2, AlertCircle, Calendar as CalendarIcon, Plus } from "lucide-react";
+import { AppointmentDialog } from "../appointments/AppointmentDialog";
+import { AppointmentCard } from "../appointments/AppointmentCard";
+import { AppointmentWithDetails } from "@/lib/appointmentUtils";
 import {
   StaffDateAssignment,
   TimeSlot,
@@ -53,12 +56,17 @@ export function BranchStaffScheduleCalendar({
     timeSlots: TimeSlot[];
     reason?: string;
   } | null>(null);
+  const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
+  const [showAppointmentDialog, setShowAppointmentDialog] = useState(false);
   const { toast } = useToast();
 
   // Fetch assignments for the branch
   useEffect(() => {
     fetchAssignments();
     fetchAvailableStaff();
+    if (selectedDate) {
+      fetchAppointments();
+    }
     
     // Set up realtime subscription
     const channel = supabase
@@ -76,12 +84,32 @@ export function BranchStaffScheduleCalendar({
           fetchAssignments();
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `branch_id=eq.${branchId}`,
+        },
+        () => {
+          if (selectedDate) {
+            fetchAppointments();
+          }
+        }
+      )
       .subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
   }, [branchId]);
+
+  useEffect(() => {
+    if (selectedDate) {
+      fetchAppointments();
+    }
+  }, [selectedDate]);
 
   const fetchAssignments = async () => {
     const { data, error } = await supabase
@@ -125,6 +153,25 @@ export function BranchStaffScheduleCalendar({
 
     const staffList = data?.map((item: any) => item.staff).filter(Boolean) || [];
     setAvailableStaff(staffList);
+  };
+
+  const fetchAppointments = async () => {
+    if (!selectedDate) return;
+    
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+    const { data } = await supabase
+      .from("appointments")
+      .select(`
+        *,
+        staff:staff_id (id, first_name, last_name, profile_image_url),
+        service:service_id (id, title, duration, cost),
+        branch:branch_id (id, name)
+      `)
+      .eq("branch_id", branchId)
+      .eq("date", dateStr)
+      .order("start_time");
+
+    setAppointments((data as any) || []);
   };
 
   const checkConflicts = async (
@@ -360,30 +407,69 @@ export function BranchStaffScheduleCalendar({
                       </Card>
                     ))}
                   </div>
-                ) : (
-                  <p className="text-sm text-muted-foreground text-center py-8">
-                    No staff assigned for this date
-                  </p>
-                )}
+                 ) : (
+                   <p className="text-sm text-muted-foreground text-center py-8">
+                     No staff assigned for this date
+                   </p>
+                 )}
 
-                {!showAssignmentForm ? (
-                  <Button
-                    onClick={() => setShowAssignmentForm(true)}
-                    className="w-full"
-                  >
-                    <Users className="h-4 w-4 mr-2" />
-                    Assign Staff to This Date
-                  </Button>
-                ) : (
-                  <div className="border rounded-lg p-4">
-                    <DateStaffAssignmentForm
-                      availableStaff={availableStaff}
-                      onSubmit={handleAssignStaff}
-                      onCancel={() => setShowAssignmentForm(false)}
-                      isLoading={isLoading}
-                    />
-                  </div>
-                )}
+                 <Separator className="my-4" />
+
+                 {/* Appointments Section */}
+                 <div className="space-y-3">
+                   <div className="flex items-center justify-between">
+                     <h4 className="font-semibold flex items-center gap-2">
+                       <CalendarIcon className="h-4 w-4" />
+                       Appointments ({appointments.length})
+                     </h4>
+                     <Button
+                       onClick={() => setShowAppointmentDialog(true)}
+                       size="sm"
+                       variant="outline"
+                     >
+                       <Plus className="h-4 w-4 mr-2" />
+                       Book
+                     </Button>
+                   </div>
+
+                   {appointments.length === 0 ? (
+                     <p className="text-sm text-muted-foreground text-center py-4">
+                       No appointments scheduled
+                     </p>
+                   ) : (
+                     <div className="space-y-2">
+                       {appointments.map((appointment) => (
+                         <AppointmentCard
+                           key={appointment.id}
+                           appointment={appointment}
+                           onDelete={() => fetchAppointments()}
+                           onUpdateStatus={() => fetchAppointments()}
+                         />
+                       ))}
+                     </div>
+                   )}
+                 </div>
+
+                 <Separator className="my-4" />
+
+                 {!showAssignmentForm ? (
+                   <Button
+                     onClick={() => setShowAssignmentForm(true)}
+                     className="w-full"
+                   >
+                     <Users className="h-4 w-4 mr-2" />
+                     Assign Staff to This Date
+                   </Button>
+                 ) : (
+                   <div className="border rounded-lg p-4">
+                     <DateStaffAssignmentForm
+                       availableStaff={availableStaff}
+                       onSubmit={handleAssignStaff}
+                       onCancel={() => setShowAssignmentForm(false)}
+                       isLoading={isLoading}
+                     />
+                   </div>
+                 )}
               </>
             ) : (
               <p className="text-sm text-muted-foreground text-center py-8">
@@ -394,6 +480,17 @@ export function BranchStaffScheduleCalendar({
         </div>
       </CardContent>
       </Card>
+
+      <AppointmentDialog
+        open={showAppointmentDialog}
+        onOpenChange={setShowAppointmentDialog}
+        prefilledBranchId={branchId}
+        prefilledDate={selectedDate}
+        onSuccess={() => {
+          fetchAppointments();
+          setShowAppointmentDialog(false);
+        }}
+      />
 
       {/* Conflict Warning Dialog */}
       <AlertDialog open={showConflictDialog} onOpenChange={setShowConflictDialog}>
