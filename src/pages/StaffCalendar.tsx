@@ -559,7 +559,7 @@ export default function StaffCalendar() {
                                   >
                                     {slots ? (
                                       <div className="space-y-1">
-                                        {slots.map((slot: any, idx: number) => (
+                                         {slots.map((slot: any, idx: number) => (
                                           <DraggableScheduleBlock
                                             key={idx}
                                             staffId={staff.id}
@@ -570,6 +570,9 @@ export default function StaffCalendar() {
                                             day={day.key}
                                             slot={slot}
                                             hasConflict={hasConflictOnDay}
+                                            workingHours={schedule.working_hours}
+                                            overrides={schedule.overrides}
+                                            leaveRequests={schedule.leave_requests}
                                           />
                                         ))}
                                         {hasConflictOnDay && (
@@ -668,33 +671,69 @@ export default function StaffCalendar() {
             <CardTitle className="text-lg">Legend</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-wrap gap-4">
-              {schedules
-                .reduce((acc, schedule) => {
-                  if (!acc.find((b) => b.id === schedule.branch.id)) {
-                    acc.push({
-                      id: schedule.branch.id,
-                      name: schedule.branch.name,
-                      color: schedule.branch_color,
-                    });
-                  }
-                  return acc;
-                }, [] as Array<{ id: string; name: string; color: string }>)
-                .map((branch) => (
-                  <div key={branch.id} className="flex items-center gap-2">
-                    <div className={`w-4 h-4 rounded ${branch.color}`}></div>
-                    <span className="text-sm">{branch.name}</span>
-                  </div>
-                ))}
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive/10"></div>
-                <span className="text-sm">Schedule Conflict</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-muted border-2 border-primary flex items-center justify-center">
-                  <span className="text-[8px]">⋮⋮</span>
+            <div className="space-y-4">
+              {/* Branch Colors */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Branches</h4>
+                <div className="flex flex-wrap gap-4">
+                  {schedules
+                    .reduce((acc, schedule) => {
+                      if (!acc.find((b) => b.id === schedule.branch.id)) {
+                        acc.push({
+                          id: schedule.branch.id,
+                          name: schedule.branch.name,
+                          color: schedule.branch_color,
+                        });
+                      }
+                      return acc;
+                    }, [] as Array<{ id: string; name: string; color: string }>)
+                    .map((branch) => (
+                      <div key={branch.id} className="flex items-center gap-2">
+                        <div className={`w-4 h-4 rounded ${branch.color}`}></div>
+                        <span className="text-sm">{branch.name}</span>
+                      </div>
+                    ))}
                 </div>
-                <span className="text-sm">Draggable (Week View)</span>
+              </div>
+
+              {/* Schedule Types */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Schedule Types</h4>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <span>🟢</span>
+                    <span className="text-sm">Regular Schedule</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>🟡</span>
+                    <span className="text-sm">Custom Hours</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>🔴</span>
+                    <span className="text-sm">Unavailable / Leave</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span>⚪</span>
+                    <span className="text-sm">Closed / Not Scheduled</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Other Indicators */}
+              <div>
+                <h4 className="text-sm font-semibold mb-2">Other Indicators</h4>
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded border-2 border-destructive bg-destructive/10"></div>
+                    <span className="text-sm">Schedule Conflict</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-muted border-2 border-primary flex items-center justify-center">
+                      <span className="text-[8px]">⋮⋮</span>
+                    </div>
+                    <span className="text-sm">Draggable (Week View)</span>
+                  </div>
+                </div>
               </div>
             </div>
           </CardContent>
