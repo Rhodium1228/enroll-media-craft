@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Settings, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -21,6 +21,7 @@ import {
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Branches", url: "/dashboard", icon: Building2 },
+  { title: "Services", url: "/services", icon: Package },
   { title: "Staff", url: "/staff", icon: Users },
   { title: "Staff Calendar", url: "/calendar", icon: Calendar },
   { title: "Appointments", url: "/appointments", icon: ClipboardList },
