@@ -19,6 +19,7 @@ import ManageBooking from "./pages/ManageBooking";
 import SubmitReview from "./pages/SubmitReview";
 import CustomerPortal from "./pages/CustomerPortal";
 import StaffClockRecords from "./pages/StaffClockRecords";
+import StaffClockInOut from "./pages/StaffClockInOut";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -121,6 +122,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <StaffClockRecords />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clock-in-out"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <StaffClockInOut />
                 </AppLayout>
               </ProtectedRoute>
             }
