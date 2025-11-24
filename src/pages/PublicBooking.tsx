@@ -89,6 +89,9 @@ export default function PublicBooking() {
     }
   }, [selectedService, selectedBranch]);
 
+  // Trigger for forcing time slot refresh
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
   // Real-time subscription for appointment changes
   useEffect(() => {
     if (!selectedBranch || !selectedDate) return;
@@ -119,10 +122,8 @@ export default function PublicBooking() {
               description: "Time slots have been updated. Please review available times.",
             });
             
-            // Refresh time slots
-            if (selectedService) {
-              generateTimeSlots();
-            }
+            // Trigger time slots refresh
+            setRefreshTrigger(prev => prev + 1);
           }
         }
       )
@@ -131,14 +132,14 @@ export default function PublicBooking() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedBranch, selectedDate, selectedService]);
+  }, [selectedBranch, selectedDate]);
 
   // Generate time slots when date, branch, service, and optionally staff are selected
   useEffect(() => {
     if (selectedDate && selectedBranch && selectedService) {
       generateTimeSlots();
     }
-  }, [selectedDate, selectedBranch, selectedService, selectedStaff]);
+  }, [selectedDate, selectedBranch, selectedService, selectedStaff, refreshTrigger]);
 
   const fetchBranches = async () => {
     try {
