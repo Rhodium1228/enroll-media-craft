@@ -86,10 +86,10 @@ export default function PublicBooking() {
   }, [selectedService, selectedDate, selectedTime]);
 
   useEffect(() => {
-    if (selectedDate) {
+    if (selectedDate && selectedBranch && selectedService) {
       generateTimeSlots();
     }
-  }, [selectedDate]);
+  }, [selectedDate, selectedBranch, selectedService]);
 
   const fetchBranches = async () => {
     try {
@@ -127,15 +127,130 @@ export default function PublicBooking() {
     }
   };
 
-  const generateTimeSlots = () => {
-    const slots = [];
-    for (let hour = 9; hour <= 17; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const time = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
-        slots.push(time);
+  const generateTimeSlots = async () => {
+    if (!selectedDate || !selectedBranch || !selectedService) return;
+
+    try {
+      const dateStr = format(selectedDate, "yyyy-MM-dd");
+      const dayOfWeek = format(selectedDate, "EEEE").toLowerCase();
+
+      // Fetch branch details with operating hours
+      const { data: branch, error: branchError } = await supabase
+        .from("branches")
+        .select("open_hours")
+        .eq("id", selectedBranch)
+        .single();
+
+      if (branchError) throw branchError;
+
+      // Check for date-specific branch overrides
+      const { data: branchOverride } = await supabase
+        .from("branch_schedule_overrides")
+        .select("*")
+        .eq("branch_id", selectedBranch)
+        .eq("date", dateStr)
+        .maybeSingle();
+
+      // Check if branch is closed on this date
+      if (branchOverride?.override_type === "closed") {
+        setTimeSlots([]);
+        toast({
+          title: "Branch Closed",
+          description: `The selected location is closed on ${format(selectedDate, "PPP")}`,
+          variant: "destructive",
+        });
+        return;
       }
+
+      // Get branch hours (from override or regular schedule)
+      let openTime = "09:00";
+      let closeTime = "17:00";
+
+      if (branchOverride?.override_type === "custom_hours" && branchOverride.time_slots) {
+        const customSlots = branchOverride.time_slots as any[];
+        if (customSlots.length > 0) {
+          openTime = customSlots[0].start;
+          closeTime = customSlots[customSlots.length - 1].end;
+        }
+      } else if (branch?.open_hours) {
+        const hours = branch.open_hours as any;
+        const dayHours = hours[dayOfWeek];
+        if (dayHours && dayHours.open && dayHours.close) {
+          openTime = dayHours.open;
+          closeTime = dayHours.close;
+        }
+      }
+
+      // Fetch staff with date assignments for this date
+      const { data: staffAssignments } = await supabase
+        .from("staff_date_assignments")
+        .select("staff_id, time_slots")
+        .eq("branch_id", selectedBranch)
+        .eq("date", dateStr);
+
+      // Fetch existing appointments to exclude booked slots
+      const { data: appointments } = await supabase
+        .from("appointments")
+        .select("start_time, end_time, staff_id")
+        .eq("branch_id", selectedBranch)
+        .eq("date", dateStr)
+        .neq("status", "cancelled");
+
+      // Get service duration
+      const service = services.find(s => s.id === selectedService);
+      const serviceDuration = service?.duration || 60;
+
+      // Generate time slots based on branch hours
+      const slots = [];
+      const [openHour, openMinute] = openTime.split(":").map(Number);
+      const [closeHour, closeMinute] = closeTime.split(":").map(Number);
+
+      let currentTime = new Date();
+      currentTime.setHours(openHour, openMinute, 0, 0);
+
+      const endTime = new Date();
+      endTime.setHours(closeHour, closeMinute, 0, 0);
+
+      while (currentTime < endTime) {
+        const timeStr = format(currentTime, "HH:mm");
+        
+        // Check if any staff is available at this time
+        const hasAvailableStaff = staffAssignments?.some(assignment => {
+          const timeSlots = assignment.time_slots as any[];
+          return timeSlots?.some(slot => {
+            return timeStr >= slot.start && timeStr < slot.end;
+          });
+        });
+
+        // Check if time slot has enough room for service duration
+        const endServiceTime = new Date(currentTime.getTime() + serviceDuration * 60000);
+        const fitsInBranchHours = endServiceTime <= endTime;
+
+        if (hasAvailableStaff && fitsInBranchHours) {
+          slots.push(timeStr);
+        }
+
+        // Increment by 30 minutes
+        currentTime.setMinutes(currentTime.getMinutes() + 30);
+      }
+
+      setTimeSlots(slots);
+
+      if (slots.length === 0) {
+        toast({
+          title: "No Availability",
+          description: "No time slots available on this date. Please select another date.",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Error generating time slots:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load available time slots",
+        variant: "destructive",
+      });
     }
-    setTimeSlots(slots);
   };
 
   const fetchAvailableStaff = async () => {
