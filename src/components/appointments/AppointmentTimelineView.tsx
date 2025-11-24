@@ -27,20 +27,8 @@ export const AppointmentTimelineView = ({
   onStatusUpdate,
 }: AppointmentTimelineViewProps) => {
   const isMobile = useIsMobile();
-  
-  // On mobile, show card view instead of timeline
-  if (isMobile) {
-    return (
-      <AppointmentCardView
-        appointments={appointments}
-        date={date}
-        onAppointmentClick={onAppointmentClick}
-        onStatusUpdate={onStatusUpdate}
-      />
-    );
-  }
 
-  // Desktop timeline view
+  // Desktop timeline view constants and memoized values
   const pixelsPerHour = 80;
   const startHour = 7; // 7 AM
   const endHour = 21; // 9 PM
@@ -63,6 +51,18 @@ export const AppointmentTimelineView = ({
     }
     return labels;
   }, []);
+  
+  // On mobile, show card view instead of timeline
+  if (isMobile) {
+    return (
+      <AppointmentCardView
+        appointments={appointments}
+        date={date}
+        onAppointmentClick={onAppointmentClick}
+        onStatusUpdate={onStatusUpdate}
+      />
+    );
+  }
 
   const getAppointmentStyle = (appointment: AppointmentWithDetails) => {
     const startMinutes = timeToMinutes(appointment.start_time);
