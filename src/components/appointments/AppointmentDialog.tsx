@@ -55,6 +55,7 @@ export const AppointmentDialog = ({
 }: AppointmentDialogProps) => {
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
+  const [loadingStaff, setLoadingStaff] = useState(false);
   const [step, setStep] = useState(1);
 
   // Form state
@@ -83,6 +84,10 @@ export const AppointmentDialog = ({
   useEffect(() => {
     if (selectedBranch && selectedDate) {
       fetchStaffForDate();
+      // Reset staff selection when branch or date changes
+      setSelectedStaff("");
+      setSelectedService("");
+      setSelectedTimeSlot("");
     }
   }, [selectedBranch, selectedDate]);
 
@@ -114,6 +119,7 @@ export const AppointmentDialog = ({
   const fetchStaffForDate = async () => {
     if (!selectedDate || !selectedBranch) return;
 
+    setLoadingStaff(true);
     const dateStr = format(selectedDate, "yyyy-MM-dd");
     
     const { data, error } = await supabase
@@ -129,6 +135,8 @@ export const AppointmentDialog = ({
       `)
       .eq("branch_id", selectedBranch)
       .eq("date", dateStr);
+
+    setLoadingStaff(false);
 
     if (error) {
       toast({ title: "Error loading staff", variant: "destructive" });
@@ -284,7 +292,7 @@ export const AppointmentDialog = ({
                 <SelectTrigger>
                   <SelectValue placeholder="Select branch" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="z-50 bg-popover">
                   {branches.map((branch) => (
                     <SelectItem key={branch.id} value={branch.id}>
                       {branch.name}
@@ -311,34 +319,55 @@ export const AppointmentDialog = ({
             <div className="space-y-4 pt-4 border-t">
               <div>
                 <Label>Staff Member *</Label>
-                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select staff" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {staff.map((member) => (
-                      <SelectItem key={member.id} value={member.id}>
-                        {member.first_name} {member.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {loadingStaff ? (
+                  <div className="p-4 border rounded-md bg-muted/50 flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <p className="text-sm text-muted-foreground">Loading available staff...</p>
+                  </div>
+                ) : staff.length === 0 ? (
+                  <div className="p-4 border rounded-md bg-muted/50">
+                    <p className="text-sm text-muted-foreground">
+                      No staff assigned to this branch on the selected date. Please assign staff to this date first in the Staff Calendar or Branch Schedule.
+                    </p>
+                  </div>
+                ) : (
+                  <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select staff" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      {staff.map((member) => (
+                        <SelectItem key={member.id} value={member.id}>
+                          {member.first_name} {member.last_name}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               <div>
                 <Label>Service *</Label>
-                <Select value={selectedService} onValueChange={setSelectedService}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select service" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        {service.title} ({service.duration} min - ${service.cost})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {services.length === 0 ? (
+                  <div className="p-4 border rounded-md bg-muted/50">
+                    <p className="text-sm text-muted-foreground">
+                      No services available for this branch. Please add services first.
+                    </p>
+                  </div>
+                ) : (
+                  <Select value={selectedService} onValueChange={setSelectedService} disabled={!selectedStaff}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select service" />
+                    </SelectTrigger>
+                    <SelectContent className="z-50 bg-popover">
+                      {services.map((service) => (
+                        <SelectItem key={service.id} value={service.id}>
+                          {service.title} ({service.duration} min - ${service.cost})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
 
               {selectedService && services.find(s => s.id === selectedService) && (
