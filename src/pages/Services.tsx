@@ -310,116 +310,122 @@ export default function Services() {
   }
 
   return (
-    <div className="container mx-auto p-6">
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl font-bold">Services</h1>
-          <p className="text-muted-foreground">Manage services across all branches</p>
+    <div className="min-h-screen bg-background">
+      {/* Gradient Header */}
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="text-white">
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2">Services</h1>
+              <p className="text-white/90">Manage services across all branches</p>
+            </div>
+            <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
+              <DialogTrigger asChild>
+                <Button className="bg-white text-primary hover:bg-white/90">
+                  <Plus className="mr-2 h-4 w-4" />
+                  Add Service
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>{editingService ? "Edit Service" : "Create New Service"}</DialogTitle>
+                  <DialogDescription>
+                    {editingService ? "Update service details" : "Add a new service to your branch"}
+                  </DialogDescription>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div>
+                    <Label htmlFor="branch">Branch</Label>
+                    <Select
+                      value={formData.branch_id}
+                      onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select branch" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {branches.map((branch) => (
+                          <SelectItem key={branch.id} value={branch.id}>
+                            {branch.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="title">Service Name</Label>
+                    <Input
+                      id="title"
+                      value={formData.title}
+                      onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                      placeholder="e.g., Haircut, Massage, Consultation"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="service_type">Service Type</Label>
+                    <Select
+                      value={formData.service_type}
+                      onValueChange={(value) => setFormData({ ...formData, service_type: value })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select type (optional)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="haircut">Haircut</SelectItem>
+                        <SelectItem value="styling">Styling</SelectItem>
+                        <SelectItem value="coloring">Coloring</SelectItem>
+                        <SelectItem value="treatment">Treatment</SelectItem>
+                        <SelectItem value="massage">Massage</SelectItem>
+                        <SelectItem value="spa">Spa</SelectItem>
+                        <SelectItem value="consultation">Consultation</SelectItem>
+                        <SelectItem value="other">Other</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="duration">Duration (minutes)</Label>
+                    <Input
+                      id="duration"
+                      type="number"
+                      value={formData.duration}
+                      onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
+                      placeholder="30"
+                      min="1"
+                    />
+                  </div>
+
+                  <div>
+                    <Label htmlFor="cost">Cost ($)</Label>
+                    <Input
+                      id="cost"
+                      type="number"
+                      step="0.01"
+                      value={formData.cost}
+                      onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
+                      placeholder="50.00"
+                      min="0"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2">
+                    <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit">
+                      {editingService ? "Update" : "Create"} Service
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={handleDialogChange}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Service
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>{editingService ? "Edit Service" : "Create New Service"}</DialogTitle>
-              <DialogDescription>
-                {editingService ? "Update service details" : "Add a new service to your branch"}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div>
-                <Label htmlFor="branch">Branch</Label>
-                <Select
-                  value={formData.branch_id}
-                  onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select branch" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {branches.map((branch) => (
-                      <SelectItem key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="title">Service Name</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  placeholder="e.g., Haircut, Massage, Consultation"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="service_type">Service Type</Label>
-                <Select
-                  value={formData.service_type}
-                  onValueChange={(value) => setFormData({ ...formData, service_type: value })}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select type (optional)" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="haircut">Haircut</SelectItem>
-                    <SelectItem value="styling">Styling</SelectItem>
-                    <SelectItem value="coloring">Coloring</SelectItem>
-                    <SelectItem value="treatment">Treatment</SelectItem>
-                    <SelectItem value="massage">Massage</SelectItem>
-                    <SelectItem value="spa">Spa</SelectItem>
-                    <SelectItem value="consultation">Consultation</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div>
-                <Label htmlFor="duration">Duration (minutes)</Label>
-                <Input
-                  id="duration"
-                  type="number"
-                  value={formData.duration}
-                  onChange={(e) => setFormData({ ...formData, duration: e.target.value })}
-                  placeholder="30"
-                  min="1"
-                />
-              </div>
-
-              <div>
-                <Label htmlFor="cost">Cost ($)</Label>
-                <Input
-                  id="cost"
-                  type="number"
-                  step="0.01"
-                  value={formData.cost}
-                  onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-                  placeholder="50.00"
-                  min="0"
-                />
-              </div>
-
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit">
-                  {editingService ? "Update" : "Create"} Service
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
       </div>
 
+      <div className="max-w-7xl mx-auto p-6">
       {services.length === 0 ? (
         <Card>
           <CardContent className="pt-6">
@@ -439,7 +445,7 @@ export default function Services() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service) => (
-            <Card key={service.id} className="hover:shadow-lg transition-shadow">
+            <Card key={service.id} className="hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -614,6 +620,7 @@ export default function Services() {
           ))}
         </div>
       )}
+      </div>
     </div>
   );
 }
