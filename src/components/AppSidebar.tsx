@@ -4,6 +4,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logo from "@/assets/bms-pro-logo.png";
 
 import {
   Sidebar,
@@ -49,16 +50,12 @@ export function AppSidebar() {
   return (
     <Sidebar className="border-r bg-sidebar" collapsible="icon">
       <SidebarHeader className="border-b border-sidebar-border p-4">
-        <div className="flex items-center gap-3">
-          <div className="bg-primary p-2 rounded-lg flex-shrink-0">
-            <Building2 className="h-6 w-6 text-primary-foreground" />
-          </div>
-          {open && (
-            <div className="min-w-0">
-              <h2 className="font-bold text-lg truncate">BMS PRO</h2>
-              <p className="text-xs text-muted-foreground">PINK</p>
-            </div>
-          )}
+        <div className="flex items-center justify-center">
+          <img 
+            src={logo} 
+            alt="BMS PRO" 
+            className={open ? "h-12 w-auto" : "h-10 w-auto"}
+          />
         </div>
       </SidebarHeader>
 

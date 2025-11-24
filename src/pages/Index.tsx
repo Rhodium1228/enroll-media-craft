@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { BranchEnrolmentWizard } from "@/components/branch/BranchEnrolmentWizard";
 import { AuthForm } from "@/components/auth/AuthForm";
 import { Button } from "@/components/ui/button";
-import { Building2, Plus, LogOut, LayoutDashboard, Calendar, ClipboardList } from "lucide-react";
+import { Plus, LogOut, LayoutDashboard, Calendar, ClipboardList } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import logo from "@/assets/bms-pro-logo.png";
 
 const Index = () => {
   const [showWizard, setShowWizard] = useState(false);
@@ -61,15 +62,14 @@ const Index = () => {
         
         <div className="text-center space-y-8 max-w-4xl mx-auto">
           <div className="inline-block">
-            <div className="bg-primary/10 p-6 rounded-full">
-              <Building2 className="w-16 h-16 text-primary" />
-            </div>
+            <img 
+              src={logo} 
+              alt="BMS PRO" 
+              className="h-32 w-auto mx-auto"
+            />
           </div>
           
           <div className="space-y-4">
-            <h1 className="text-5xl font-bold tracking-tight">
-              BMS <span className="text-primary">PRO</span>
-            </h1>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Professional Branch Management System with comprehensive enrolment capabilities
             </p>
