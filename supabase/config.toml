@@ -1,1 +1,8 @@
-project_id = "ttadtselsaknrergphtl"
+[functions.get-staff-availability]
+verify_jwt = false
+
+[functions.create-public-booking]
+verify_jwt = false
+
+[functions.manage-booking]
+verify_jwt = false

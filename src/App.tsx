@@ -14,6 +14,8 @@ import StaffManagement from "./pages/StaffManagement";
 import StaffCalendar from "./pages/StaffCalendar";
 import StaffCalendarPage from "./pages/StaffCalendarPage";
 import Appointments from "./pages/Appointments";
+import PublicBooking from "./pages/PublicBooking";
+import ManageBooking from "./pages/ManageBooking";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/book" element={<PublicBooking />} />
+          <Route path="/manage-booking" element={<ManageBooking />} />
           <Route
             path="/dashboard"
             element={
