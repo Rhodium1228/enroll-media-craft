@@ -266,6 +266,7 @@ export default function Appointments() {
                 appointments={appointments}
                 date={selectedDate}
                 onAppointmentClick={(apt) => console.log("View appointment", apt)}
+                onStatusUpdate={fetchAppointments}
               />
             )}
           </TabsContent>

@@ -17,12 +17,14 @@ interface AppointmentTimelineViewProps {
   appointments: AppointmentWithDetails[];
   date: Date;
   onAppointmentClick?: (appointment: AppointmentWithDetails) => void;
+  onStatusUpdate?: () => void;
 }
 
 export const AppointmentTimelineView = ({
   appointments,
   date,
   onAppointmentClick,
+  onStatusUpdate,
 }: AppointmentTimelineViewProps) => {
   const isMobile = useIsMobile();
   
@@ -33,6 +35,7 @@ export const AppointmentTimelineView = ({
         appointments={appointments}
         date={date}
         onAppointmentClick={onAppointmentClick}
+        onStatusUpdate={onStatusUpdate}
       />
     );
   }
