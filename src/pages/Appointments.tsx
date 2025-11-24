@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
@@ -10,7 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight, X, Filter } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, subDays, startOfMonth, endOfMonth, addWeeks, subWeeks } from "date-fns";
@@ -40,11 +41,14 @@ export default function Appointments() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [branches, setBranches] = useState<Array<{ id: string; name: string }>>([]);
   const [selectedBranch, setSelectedBranch] = useState<string>("all");
+  const [staff, setStaff] = useState<Array<{ id: string; first_name: string; last_name: string }>>([]);
+  const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
 
   useEffect(() => {
     fetchBranches();
+    fetchStaff();
     fetchAppointments();
 
     // Real-time subscription
@@ -66,16 +70,37 @@ export default function Appointments() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedDate, activeView, selectedBranch]);
+  }, [selectedDate, activeView, selectedBranch, selectedStaff]);
 
   const fetchBranches = async () => {
     const { data, error } = await supabase
       .from("branches")
       .select("id, name")
-      .eq("status", "active");
+      .eq("status", "active")
+      .order("name");
 
     if (!error && data) {
       setBranches(data);
+    }
+  };
+
+  const fetchStaff = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from("staff")
+        .select("id, first_name, last_name")
+        .eq("created_by", user.id)
+        .eq("status", "active")
+        .order("first_name");
+
+      if (!error && data) {
+        setStaff(data);
+      }
+    } catch (error) {
+      console.error('Error fetching staff:', error);
     }
   };
 
@@ -121,6 +146,11 @@ export default function Appointments() {
     // Filter by branch if selected
     if (selectedBranch !== "all") {
       query = query.eq("branch_id", selectedBranch);
+    }
+
+    // Filter by staff if selected
+    if (selectedStaff !== "all") {
+      query = query.eq("staff_id", selectedStaff);
     }
 
     const { data, error } = await query.order("start_time");
@@ -248,19 +278,57 @@ export default function Appointments() {
             {activeView === "month" && format(selectedDate, "MMMM yyyy")}
           </div>
 
-          <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-            <SelectTrigger className="w-48">
-              <SelectValue placeholder="All branches" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All branches</SelectItem>
-              {branches.map((branch) => (
-                <SelectItem key={branch.id} value={branch.id}>
-                  {branch.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <Select value={selectedBranch} onValueChange={setSelectedBranch}>
+              <SelectTrigger className={`w-48 ${selectedBranch !== "all" ? "border-primary" : ""}`}>
+                <SelectValue placeholder="All branches" />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-popover">
+                <SelectItem value="all">All branches</SelectItem>
+                {branches.map((branch) => (
+                  <SelectItem key={branch.id} value={branch.id}>
+                    {branch.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+              <SelectTrigger className={`w-48 ${selectedStaff !== "all" ? "border-primary" : ""}`}>
+                <SelectValue placeholder="All staff" />
+              </SelectTrigger>
+              <SelectContent className="z-50 bg-popover">
+                <SelectItem value="all">All staff</SelectItem>
+                {staff.map((member) => (
+                  <SelectItem key={member.id} value={member.id}>
+                    {member.first_name} {member.last_name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            {(selectedBranch !== "all" || selectedStaff !== "all") && (
+              <Button 
+                variant="ghost" 
+                size="sm"
+                onClick={() => {
+                  setSelectedBranch("all");
+                  setSelectedStaff("all");
+                }}
+                className="gap-2"
+              >
+                <X className="h-4 w-4" />
+                Clear Filters
+              </Button>
+            )}
+
+            {(selectedBranch !== "all" || selectedStaff !== "all") && (
+              <Badge variant="secondary" className="gap-1">
+                <Filter className="h-3 w-3" />
+                {[selectedBranch !== "all" && "Branch", selectedStaff !== "all" && "Staff"].filter(Boolean).join(", ")}
+              </Badge>
+            )}
+          </div>
         </div>
 
         {/* Views */}
