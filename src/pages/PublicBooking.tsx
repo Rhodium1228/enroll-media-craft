@@ -105,7 +105,10 @@ export default function PublicBooking() {
           console.log('Appointment change detected:', payload);
           
           // Check if the change affects the currently selected date
-          const appointmentDate = payload.new?.date || payload.old?.date;
+          const newRecord = payload.new as any;
+          const oldRecord = payload.old as any;
+          const appointmentDate = newRecord?.date || oldRecord?.date;
+          
           if (appointmentDate === dateStr) {
             toast({
               title: "Availability Updated",

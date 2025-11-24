@@ -17,11 +17,8 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_ANON_KEY') ?? ''
     );
 
-    const url = new URL(req.url);
-    const serviceId = url.searchParams.get('serviceId');
-    const branchId = url.searchParams.get('branchId');
-    const date = url.searchParams.get('date');
-    const startTime = url.searchParams.get('startTime');
+    // Read from JSON body instead of query parameters
+    const { serviceId, branchId, date, startTime } = await req.json();
 
     if (!serviceId || !branchId || !date || !startTime) {
       return new Response(
