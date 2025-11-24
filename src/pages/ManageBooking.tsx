@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -54,11 +54,17 @@ interface BookingDetails {
 
 export default function ManageBooking() {
   const { toast } = useToast();
+  const referenceInputRef = useRef<HTMLInputElement>(null);
   const [reference, setReference] = useState("");
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [booking, setBooking] = useState<BookingDetails | null>(null);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
+
+  useEffect(() => {
+    // Auto-focus the booking reference field on mount
+    referenceInputRef.current?.focus();
+  }, []);
 
   const handleSearch = async () => {
     if (!reference || !email) {
@@ -85,7 +91,7 @@ export default function ManageBooking() {
       if (!data?.booking) {
         toast({
           title: "Booking Not Found",
-          description: "No booking found with this reference and email",
+          description: "No booking found for this reference and email. Check your confirmation email or contact support.",
           variant: "destructive",
         });
         return;
@@ -96,12 +102,20 @@ export default function ManageBooking() {
       console.error("Error fetching booking:", error);
       toast({
         title: "Error",
-        description: "Failed to retrieve booking details",
+        description: "Unable to retrieve booking details. Please check your internet connection or try again later.",
         variant: "destructive",
       });
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleReferencePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedText = e.clipboardData.getData('text');
+    // Strip whitespace and convert to uppercase
+    const cleanedText = pastedText.replace(/\s+/g, '').toUpperCase();
+    setReference(cleanedText.slice(0, 8)); // Limit to 8 characters
   };
 
   const handleCancel = async () => {
@@ -167,10 +181,12 @@ export default function ManageBooking() {
               <div className="space-y-2">
                 <Label htmlFor="reference">Booking Reference</Label>
                 <Input
+                  ref={referenceInputRef}
                   id="reference"
                   placeholder="ABC12345"
                   value={reference}
-                  onChange={(e) => setReference(e.target.value.toUpperCase())}
+                  onChange={(e) => setReference(e.target.value.replace(/\s+/g, '').toUpperCase())}
+                  onPaste={handleReferencePaste}
                   maxLength={8}
                   className="font-mono text-lg"
                 />
