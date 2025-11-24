@@ -43,7 +43,21 @@ const Index = () => {
   }
 
   if (!user) {
-    return <AuthForm />;
+    return (
+      <>
+        <AuthForm />
+        <div className="fixed bottom-4 right-4">
+          <Button
+            size="lg"
+            onClick={() => navigate("/book")}
+            className="shadow-lg"
+          >
+            <Calendar className="w-5 h-5 mr-2" />
+            Book Appointment
+          </Button>
+        </div>
+      </>
+    );
   }
 
   if (showWizard) {

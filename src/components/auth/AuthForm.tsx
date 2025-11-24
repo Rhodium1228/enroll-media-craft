@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -6,9 +7,10 @@ import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { LogIn } from "lucide-react";
+import { LogIn, Calendar } from "lucide-react";
 
 export const AuthForm = () => {
+  const navigate = useNavigate();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,6 +55,18 @@ export const AuthForm = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background via-accent/5 to-background p-4">
+      {/* Public Booking Button */}
+      <div className="fixed top-4 right-4">
+        <Button
+          variant="outline"
+          onClick={() => navigate("/book")}
+          className="gap-2"
+        >
+          <Calendar className="w-4 h-4" />
+          Book Appointment
+        </Button>
+      </div>
+
       <Card className="w-full max-w-md p-8">
         <div className="text-center mb-8">
           <div className="inline-block bg-primary/10 p-4 rounded-full mb-4">
