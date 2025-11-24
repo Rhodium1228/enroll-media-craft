@@ -7,18 +7,36 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Package, DollarSign, Clock, Trash2, Edit, TrendingUp, Calendar, Star } from "lucide-react";
+import { Plus, Package, DollarSign, Clock, Trash2, Edit, TrendingUp, Calendar, Star, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 
 interface Branch {
   id: string;
   name: string;
 }
 
+interface StaffMember {
+  id: string;
+  first_name: string;
+  last_name: string;
+  profile_image_url?: string;
+}
+
+interface Review {
+  id: string;
+  customer_name: string;
+  rating: number;
+  comment: string;
+  created_at: string;
+}
+
 interface Service {
   id: string;
   title: string;
+  service_type?: string;
   duration: number;
   cost: number;
   image_url?: string;
@@ -26,6 +44,9 @@ interface Service {
   branches?: {
     name: string;
   };
+  staff?: StaffMember[];
+  reviews?: Review[];
+  averageRating?: number;
   metrics?: {
     bookingCount: number;
     revenueGenerated: number;
@@ -44,6 +65,7 @@ export default function Services() {
 
   const [formData, setFormData] = useState({
     title: "",
+    service_type: "",
     duration: "",
     cost: "",
     branch_id: "",
@@ -81,6 +103,31 @@ export default function Services() {
         .order("created_at", { ascending: false });
 
       if (servicesError) throw servicesError;
+
+      // Fetch staff assigned to each service
+      const { data: staffServicesData, error: staffServicesError } = await supabase
+        .from("staff_services")
+        .select(`
+          service_id,
+          staff:staff_id (
+            id,
+            first_name,
+            last_name,
+            profile_image_url
+          )
+        `)
+        .in("service_id", servicesData?.map(s => s.id) || []);
+
+      if (staffServicesError) throw staffServicesError;
+
+      // Fetch reviews for each service
+      const { data: reviewsData, error: reviewsError } = await supabase
+        .from("service_reviews")
+        .select("*")
+        .in("service_id", servicesData?.map(s => s.id) || [])
+        .order("created_at", { ascending: false });
+
+      if (reviewsError) throw reviewsError;
 
       // Fetch appointments to calculate metrics
       const { data: appointmentsData, error: appointmentsError } = await supabase
@@ -125,8 +172,23 @@ export default function Services() {
           ? Object.entries(timeSlotCount).sort(([, a], [, b]) => b - a)[0][0]
           : undefined;
 
+        // Get staff for this service
+        const serviceStaff = staffServicesData
+          ?.filter(ss => ss.service_id === service.id)
+          .map(ss => ss.staff)
+          .filter(Boolean) as StaffMember[] || [];
+
+        // Get reviews for this service
+        const serviceReviews = reviewsData?.filter(r => r.service_id === service.id) || [];
+        const averageRating = serviceReviews.length > 0
+          ? serviceReviews.reduce((sum, r) => sum + r.rating, 0) / serviceReviews.length
+          : 0;
+
         return {
           ...service,
+          staff: serviceStaff,
+          reviews: serviceReviews,
+          averageRating,
           metrics: {
             bookingCount,
             revenueGenerated,
@@ -156,6 +218,7 @@ export default function Services() {
     try {
       const serviceData = {
         title: formData.title,
+        service_type: formData.service_type || null,
         duration: parseInt(formData.duration),
         cost: parseFloat(formData.cost),
         branch_id: formData.branch_id,
@@ -191,6 +254,7 @@ export default function Services() {
     setEditingService(service);
     setFormData({
       title: service.title,
+      service_type: service.service_type || "",
       duration: service.duration.toString(),
       cost: service.cost.toString(),
       branch_id: service.branch_id,
@@ -219,6 +283,7 @@ export default function Services() {
   const resetForm = () => {
     setFormData({
       title: "",
+      service_type: "",
       duration: "",
       cost: "",
       branch_id: "",
@@ -296,6 +361,28 @@ export default function Services() {
               </div>
 
               <div>
+                <Label htmlFor="service_type">Service Type</Label>
+                <Select
+                  value={formData.service_type}
+                  onValueChange={(value) => setFormData({ ...formData, service_type: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select type (optional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="haircut">Haircut</SelectItem>
+                    <SelectItem value="styling">Styling</SelectItem>
+                    <SelectItem value="coloring">Coloring</SelectItem>
+                    <SelectItem value="treatment">Treatment</SelectItem>
+                    <SelectItem value="massage">Massage</SelectItem>
+                    <SelectItem value="spa">Spa</SelectItem>
+                    <SelectItem value="consultation">Consultation</SelectItem>
+                    <SelectItem value="other">Other</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div>
                 <Label htmlFor="duration">Duration (minutes)</Label>
                 <Input
                   id="duration"
@@ -356,9 +443,22 @@ export default function Services() {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-xl">{service.title}</CardTitle>
-                    <CardDescription className="mt-1">
+                    <div className="flex items-center gap-2">
+                      <CardTitle className="text-xl">{service.title}</CardTitle>
+                      {service.service_type && (
+                        <Badge variant="outline" className="capitalize">
+                          {service.service_type}
+                        </Badge>
+                      )}
+                    </div>
+                    <CardDescription className="mt-1 flex items-center gap-2">
                       {service.branches?.name}
+                      {service.averageRating > 0 && (
+                        <span className="flex items-center gap-1 text-yellow-600">
+                          <Star className="h-3 w-3 fill-yellow-600" />
+                          {service.averageRating.toFixed(1)} ({service.reviews?.length || 0})
+                        </span>
+                      )}
                     </CardDescription>
                   </div>
                   <div className="flex gap-1">
@@ -391,6 +491,38 @@ export default function Services() {
                       ${service.cost.toFixed(2)}
                     </Badge>
                   </div>
+
+                  {service.staff && service.staff.length > 0 && (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Users className="h-4 w-4" />
+                          <span>Qualified Staff ({service.staff.length})</span>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {service.staff.slice(0, 3).map((staff) => (
+                            <div key={staff.id} className="flex items-center gap-2 bg-muted px-2 py-1 rounded-md">
+                              <Avatar className="h-5 w-5">
+                                <AvatarImage src={staff.profile_image_url} />
+                                <AvatarFallback className="text-xs">
+                                  {staff.first_name[0]}{staff.last_name[0]}
+                                </AvatarFallback>
+                              </Avatar>
+                              <span className="text-xs">
+                                {staff.first_name} {staff.last_name}
+                              </span>
+                            </div>
+                          ))}
+                          {service.staff.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{service.staff.length - 3} more
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
                   
                   {service.metrics && (
                     <>
@@ -438,6 +570,41 @@ export default function Services() {
                             </Badge>
                           </div>
                         )}
+                      </div>
+                    </>
+                  )}
+
+                  {service.reviews && service.reviews.length > 0 && (
+                    <>
+                      <Separator className="my-3" />
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between text-sm">
+                          <div className="flex items-center gap-2 text-muted-foreground">
+                            <Star className="h-4 w-4" />
+                            <span>Recent Reviews</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-yellow-600 text-yellow-600" />
+                            <span className="font-semibold">{service.averageRating?.toFixed(1)}</span>
+                          </div>
+                        </div>
+                        <div className="space-y-2 max-h-32 overflow-y-auto">
+                          {service.reviews.slice(0, 2).map((review) => (
+                            <div key={review.id} className="bg-muted p-2 rounded text-xs">
+                              <div className="flex items-center justify-between mb-1">
+                                <span className="font-semibold">{review.customer_name}</span>
+                                <div className="flex items-center gap-1">
+                                  {Array.from({ length: review.rating }).map((_, i) => (
+                                    <Star key={i} className="h-3 w-3 fill-yellow-600 text-yellow-600" />
+                                  ))}
+                                </div>
+                              </div>
+                              {review.comment && (
+                                <p className="text-muted-foreground line-clamp-2">{review.comment}</p>
+                              )}
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </>
                   )}

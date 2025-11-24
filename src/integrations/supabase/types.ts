@@ -191,6 +191,57 @@ export type Database = {
         }
         Relationships: []
       }
+      service_reviews: {
+        Row: {
+          appointment_id: string | null
+          comment: string | null
+          created_at: string | null
+          customer_email: string | null
+          customer_name: string
+          id: string
+          rating: number
+          service_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          appointment_id?: string | null
+          comment?: string | null
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name: string
+          id?: string
+          rating: number
+          service_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          appointment_id?: string | null
+          comment?: string | null
+          created_at?: string | null
+          customer_email?: string | null
+          customer_name?: string
+          id?: string
+          rating?: number
+          service_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_reviews_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_reviews_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       services: {
         Row: {
           branch_id: string
@@ -199,6 +250,7 @@ export type Database = {
           duration: number
           id: string
           image_url: string | null
+          service_type: string | null
           title: string
           updated_at: string
         }
@@ -209,6 +261,7 @@ export type Database = {
           duration: number
           id?: string
           image_url?: string | null
+          service_type?: string | null
           title: string
           updated_at?: string
         }
@@ -219,6 +272,7 @@ export type Database = {
           duration?: number
           id?: string
           image_url?: string | null
+          service_type?: string | null
           title?: string
           updated_at?: string
         }

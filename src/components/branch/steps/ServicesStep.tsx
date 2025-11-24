@@ -3,6 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { ImageCropper } from "../ImageCropper";
@@ -12,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 export interface Service {
   id: string;
   title: string;
+  service_type: string;
   duration: number; // in minutes
   cost: number;
   image: File | null;
@@ -30,6 +32,7 @@ export default function ServicesStep({ services, onChange }: ServicesStepProps) 
     const newService: Service = {
       id: crypto.randomUUID(),
       title: "",
+      service_type: "",
       duration: 30,
       cost: 0,
       image: null,
@@ -132,6 +135,28 @@ export default function ServicesStep({ services, onChange }: ServicesStepProps) 
                     placeholder="e.g., Haircut, Massage, Consultation"
                     required
                   />
+                </div>
+
+                <div className="md:col-span-2">
+                  <Label htmlFor={`service_type-${service.id}`}>Service Type</Label>
+                  <Select
+                    value={service.service_type}
+                    onValueChange={(value) => updateService(service.id, "service_type", value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select type (optional)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="haircut">Haircut</SelectItem>
+                      <SelectItem value="styling">Styling</SelectItem>
+                      <SelectItem value="coloring">Coloring</SelectItem>
+                      <SelectItem value="treatment">Treatment</SelectItem>
+                      <SelectItem value="massage">Massage</SelectItem>
+                      <SelectItem value="spa">Spa</SelectItem>
+                      <SelectItem value="consultation">Consultation</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div>
