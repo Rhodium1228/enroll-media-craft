@@ -116,6 +116,32 @@ export default function PublicBooking() {
     };
   }, []);
 
+  // Real-time subscription for services changes
+  useEffect(() => {
+    if (!selectedBranch) return;
+
+    const channel = supabase
+      .channel('public-services-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'services',
+          filter: `branch_id=eq.${selectedBranch}`
+        },
+        () => {
+          // Refresh services list when any service changes
+          fetchServices();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedBranch]);
+
   // Real-time subscription for appointment changes
   useEffect(() => {
     if (!selectedBranch || !selectedDate) return;
