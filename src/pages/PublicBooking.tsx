@@ -79,11 +79,12 @@ export default function PublicBooking() {
     }
   }, [selectedBranch]);
 
+  // Fetch staff when service is selected
   useEffect(() => {
-    if (selectedService && selectedDate && selectedTime) {
+    if (selectedService && selectedBranch) {
       fetchAvailableStaff();
     }
-  }, [selectedService, selectedDate, selectedTime]);
+  }, [selectedService, selectedBranch]);
 
   // Real-time subscription for appointment changes
   useEffect(() => {
@@ -115,12 +116,9 @@ export default function PublicBooking() {
               description: "Time slots have been updated. Please review available times.",
             });
             
-            // Refresh time slots and staff availability
+            // Refresh time slots
             if (selectedService) {
               generateTimeSlots();
-            }
-            if (selectedService && selectedTime) {
-              fetchAvailableStaff();
             }
           }
         }
@@ -130,13 +128,14 @@ export default function PublicBooking() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedBranch, selectedDate, selectedService, selectedTime]);
+  }, [selectedBranch, selectedDate, selectedService]);
 
+  // Generate time slots when date, branch, service, and optionally staff are selected
   useEffect(() => {
     if (selectedDate && selectedBranch && selectedService) {
       generateTimeSlots();
     }
-  }, [selectedDate, selectedBranch, selectedService]);
+  }, [selectedDate, selectedBranch, selectedService, selectedStaff]);
 
   const fetchBranches = async () => {
     try {
@@ -228,20 +227,32 @@ export default function PublicBooking() {
         }
       }
 
-      // Fetch staff with date assignments for this date
-      const { data: staffAssignments } = await supabase
+      // Build query for staff assignments - filter by selected staff if chosen
+      let assignmentsQuery = supabase
         .from("staff_date_assignments")
         .select("staff_id, time_slots")
         .eq("branch_id", selectedBranch)
         .eq("date", dateStr);
+      
+      if (selectedStaff) {
+        assignmentsQuery = assignmentsQuery.eq("staff_id", selectedStaff);
+      }
 
-      // Fetch existing appointments to exclude booked slots
-      const { data: appointments } = await supabase
+      const { data: staffAssignments } = await assignmentsQuery;
+
+      // Fetch existing appointments - filter by selected staff if chosen
+      let appointmentsQuery = supabase
         .from("appointments")
         .select("start_time, end_time, staff_id")
         .eq("branch_id", selectedBranch)
         .eq("date", dateStr)
         .neq("status", "cancelled");
+      
+      if (selectedStaff) {
+        appointmentsQuery = appointmentsQuery.eq("staff_id", selectedStaff);
+      }
+
+      const { data: appointments } = await appointmentsQuery;
 
       // Get service duration
       const service = services.find(s => s.id === selectedService);
@@ -261,7 +272,7 @@ export default function PublicBooking() {
       while (currentTime < endTime) {
         const timeStr = format(currentTime, "HH:mm");
         
-        // Check if any staff is available at this time
+        // Check if staff is available at this time
         const hasAvailableStaff = staffAssignments?.some(assignment => {
           const timeSlots = assignment.time_slots as any[];
           return timeSlots?.some(slot => {
@@ -269,11 +280,16 @@ export default function PublicBooking() {
           });
         });
 
-        // Check if time slot has enough room for service duration
+        // Check if this time slot is already booked
         const endServiceTime = new Date(currentTime.getTime() + serviceDuration * 60000);
+        const isBooked = appointments?.some(appt => {
+          return timeStr >= appt.start_time && timeStr < appt.end_time;
+        });
+
+        // Check if time slot has enough room for service duration
         const fitsInBranchHours = endServiceTime <= endTime;
 
-        if (hasAvailableStaff && fitsInBranchHours) {
+        if (hasAvailableStaff && !isBooked && fitsInBranchHours) {
           slots.push(timeStr);
         }
 
@@ -286,7 +302,9 @@ export default function PublicBooking() {
       if (slots.length === 0) {
         toast({
           title: "No Availability",
-          description: "No time slots available on this date. Please select another date.",
+          description: selectedStaff 
+            ? "This stylist has no available slots on this date. Try another date or stylist."
+            : "No time slots available on this date. Please select another date.",
           variant: "destructive",
         });
       }
@@ -301,28 +319,39 @@ export default function PublicBooking() {
   };
 
   const fetchAvailableStaff = async () => {
-    if (!selectedService || !selectedDate || !selectedTime) return;
+    if (!selectedService || !selectedBranch) return;
 
     try {
       setLoading(true);
-      const dateStr = format(selectedDate, "yyyy-MM-dd");
       
-      const { data, error } = await supabase.functions.invoke('get-staff-availability', {
-        body: { 
-          serviceId: selectedService,
-          branchId: selectedBranch,
-          date: dateStr,
-          startTime: selectedTime,
-        },
-      });
+      // Fetch staff who can provide this service at this branch
+      const { data, error } = await supabase
+        .from("staff_services")
+        .select(`
+          staff:staff_id (
+            id,
+            first_name,
+            last_name,
+            profile_image_url,
+            status
+          )
+        `)
+        .eq("service_id", selectedService)
+        .eq("branch_id", selectedBranch);
 
       if (error) throw error;
-      setAvailableStaff(data?.staff || []);
+      
+      // Extract and filter active staff
+      const staff = data
+        ?.map((item: any) => item.staff)
+        .filter((s: any) => s && s.status === 'active') || [];
+      
+      setAvailableStaff(staff);
     } catch (error: any) {
-      console.error("Error fetching staff availability:", error);
+      console.error("Error fetching staff:", error);
       toast({
         title: "Error",
-        description: "Failed to check staff availability",
+        description: "Failed to load available stylists",
         variant: "destructive",
       });
     } finally {
@@ -377,7 +406,7 @@ export default function PublicBooking() {
       if (error) throw error;
 
       setBookingReference(data.booking.booking_reference);
-      setStep(5);
+      setStep(6);
       
       toast({
         title: "Success!",
@@ -398,7 +427,7 @@ export default function PublicBooking() {
   const selectedServiceDetails = services.find(s => s.id === selectedService);
   const selectedBranchDetails = branches.find(b => b.id === selectedBranch);
 
-  if (step === 5 && bookingReference) {
+  if (step === 6 && bookingReference) {
     return (
       <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-6">
         <Card className="max-w-2xl w-full">
@@ -479,7 +508,7 @@ export default function PublicBooking() {
 
         {/* Progress Steps */}
         <div className="flex justify-center items-center gap-2">
-          {[1, 2, 3, 4].map((s) => (
+          {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="flex items-center">
               <div
                 className={cn(
@@ -491,7 +520,7 @@ export default function PublicBooking() {
               >
                 {s}
               </div>
-              {s < 4 && (
+              {s < 5 && (
                 <div
                   className={cn(
                     "w-12 h-1 mx-1 transition-all",
@@ -506,14 +535,15 @@ export default function PublicBooking() {
         <Card>
           <CardHeader>
             <CardTitle>
-              {step === 1 && "Select Location & Service"}
-              {step === 2 && "Choose Date & Time"}
-              {step === 3 && "Select Stylist (Optional)"}
-              {step === 4 && "Your Details"}
+              {step === 1 && "Select Location"}
+              {step === 2 && "Select Service"}
+              {step === 3 && "Choose Your Stylist"}
+              {step === 4 && "Pick Date & Time"}
+              {step === 5 && "Your Details"}
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Step 1: Branch and Service Selection */}
+            {/* Step 1: Branch Selection */}
             {step === 1 && (
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -535,43 +565,9 @@ export default function PublicBooking() {
                   </Select>
                 </div>
 
-                {selectedBranch && (
-                  <div className="space-y-3">
-                    <Label>Select Service</Label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {services.map((service) => (
-                        <Card
-                          key={service.id}
-                          className={cn(
-                            "cursor-pointer transition-all hover:shadow-md",
-                            selectedService === service.id && "ring-2 ring-primary"
-                          )}
-                          onClick={() => setSelectedService(service.id)}
-                        >
-                          <CardContent className="pt-4">
-                            <div className="space-y-2">
-                              <h3 className="font-semibold">{service.title}</h3>
-                              <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1">
-                                  <Clock className="h-4 w-4" />
-                                  {service.duration} min
-                                </div>
-                                <div className="flex items-center gap-1">
-                                  <DollarSign className="h-4 w-4" />
-                                  {service.cost}
-                                </div>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
                 <Button
                   className="w-full"
-                  disabled={!selectedBranch || !selectedService}
+                  disabled={!selectedBranch}
                   onClick={() => setStep(2)}
                 >
                   Continue
@@ -579,55 +575,40 @@ export default function PublicBooking() {
               </div>
             )}
 
-            {/* Step 2: Date and Time Selection */}
+            {/* Step 2: Service Selection */}
             {step === 2 && (
               <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Select Date</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
+                <div className="space-y-3">
+                  <Label>Select Service</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {services.map((service) => (
+                      <Card
+                        key={service.id}
                         className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !selectedDate && "text-muted-foreground"
+                          "cursor-pointer transition-all hover:shadow-md",
+                          selectedService === service.id && "ring-2 ring-primary"
                         )}
+                        onClick={() => setSelectedService(service.id)}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={selectedDate}
-                        onSelect={setSelectedDate}
-                        disabled={(date) => date < new Date()}
-                        initialFocus
-                        className="pointer-events-auto"
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                {selectedDate && (
-                  <div className="space-y-2">
-                    <Label>Select Time</Label>
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2">
-                      {timeSlots.map((time) => (
-                        <Button
-                          key={time}
-                          variant={selectedTime === time ? "default" : "outline"}
-                          size="sm"
-                          onClick={() => setSelectedTime(time)}
-                          className="text-sm"
-                        >
-                          {time}
-                        </Button>
-                      ))}
-                    </div>
+                        <CardContent className="pt-4">
+                          <div className="space-y-2">
+                            <h3 className="font-semibold">{service.title}</h3>
+                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-4 w-4" />
+                                {service.duration} min
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <DollarSign className="h-4 w-4" />
+                                {service.cost}
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
                   </div>
-                )}
+                </div>
 
                 <div className="flex gap-2">
                   <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
@@ -635,7 +616,7 @@ export default function PublicBooking() {
                   </Button>
                   <Button
                     className="flex-1"
-                    disabled={!selectedDate || !selectedTime}
+                    disabled={!selectedService}
                     onClick={() => setStep(3)}
                   >
                     Continue
@@ -656,7 +637,7 @@ export default function PublicBooking() {
                     <div className="space-y-3">
                       <Label>Choose Your Stylist (Optional)</Label>
                       <p className="text-sm text-muted-foreground">
-                        Or skip to auto-assign the next available stylist
+                        Select a preferred stylist or skip to auto-assign
                       </p>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         {availableStaff.map((staff) => (
@@ -693,8 +674,8 @@ export default function PublicBooking() {
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
                     <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No stylists available for this time</p>
-                    <p className="text-sm mt-1">Please select a different time</p>
+                    <p>No stylists offer this service</p>
+                    <p className="text-sm mt-1">Please contact the branch directly</p>
                   </div>
                 )}
 
@@ -707,14 +688,79 @@ export default function PublicBooking() {
                     disabled={availableStaff.length === 0}
                     onClick={() => setStep(4)}
                   >
-                    {selectedStaff ? "Continue" : "Auto-Assign & Continue"}
+                    Continue
                   </Button>
                 </div>
               </div>
             )}
 
-            {/* Step 4: Customer Details */}
+            {/* Step 4: Date and Time Selection */}
             {step === 4 && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Select Date</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !selectedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={selectedDate}
+                        onSelect={setSelectedDate}
+                        disabled={(date) => date < new Date()}
+                        initialFocus
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
+
+                {selectedDate && timeSlots.length > 0 && (
+                  <div className="space-y-2">
+                    <Label>Select Time</Label>
+                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2">
+                      {timeSlots.map((time) => (
+                        <Button
+                          key={time}
+                          variant={selectedTime === time ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setSelectedTime(time)}
+                          className="text-sm"
+                        >
+                          {time}
+                        </Button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setStep(3)}>
+                    Back
+                  </Button>
+                  <Button
+                    className="flex-1"
+                    disabled={!selectedDate || !selectedTime}
+                    onClick={() => setStep(5)}
+                  >
+                    Continue
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Step 5: Customer Details */}
+            {step === 5 && (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="name">Full Name *</Label>
@@ -789,7 +835,7 @@ export default function PublicBooking() {
                 </Card>
 
                 <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(3)}>
+                  <Button variant="outline" className="flex-1" onClick={() => setStep(4)}>
                     Back
                   </Button>
                   <Button
