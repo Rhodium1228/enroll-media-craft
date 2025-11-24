@@ -6,12 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { format } from "date-fns";
 import { ArrowLeft, Calendar as CalendarIcon, AlertTriangle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { detectDateAssignmentConflicts } from "@/lib/dateAssignmentUtils";
 import type { DateAssignmentConflict, TimeSlot } from "@/lib/dateAssignmentUtils";
 import MonthCalendar from "@/components/calendar/MonthCalendar";
 import DayDetailDialog from "@/components/calendar/DayDetailDialog";
+import { StaffDayView } from "@/components/calendar/StaffDayView";
 
 interface Staff {
   id: string;
@@ -56,9 +58,10 @@ export default function StaffCalendar() {
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [allStaff, setAllStaff] = useState<Staff[]>([]);
   const [conflicts, setConflicts] = useState<Map<string, DateAssignmentConflict[]>>(new Map());
-  const [viewMode, setViewMode] = useState<"month">("month");
+  const [viewMode, setViewMode] = useState<"month" | "day">("month");
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [dayDialogOpen, setDayDialogOpen] = useState(false);
+  const [dayViewDate, setDayViewDate] = useState<Date>(new Date());
 
   useEffect(() => {
     fetchSchedules();
@@ -288,41 +291,76 @@ export default function StaffCalendar() {
           </div>
         </div>
 
-        <div className="mb-8">
-
-          {conflicts.size > 0 && (
-            <Card className="border-destructive mb-6 animate-fade-in">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-destructive">
-                  <AlertTriangle className="h-5 w-5" />
-                  Schedule Conflicts Detected
-                </CardTitle>
-                <CardDescription>
-                  Days with conflicts are marked with red borders in the calendar
-                </CardDescription>
-              </CardHeader>
-            </Card>
-          )}
+        <div className="mb-6">
+          <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as "month" | "day")}>
+            <TabsList className="grid w-full max-w-md grid-cols-2">
+              <TabsTrigger value="month">Month View</TabsTrigger>
+              <TabsTrigger value="day">Day View</TabsTrigger>
+            </TabsList>
+          </Tabs>
         </div>
 
-        {schedules.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-12">
-                <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No assignments found</h3>
-                <p className="text-muted-foreground">
-                  Start by creating date-specific staff assignments in your branches
-                </p>
-              </div>
-            </CardContent>
+        {conflicts.size > 0 && (
+          <Card className="border-destructive mb-6 animate-fade-in">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2 text-destructive">
+                <AlertTriangle className="h-5 w-5" />
+                Schedule Conflicts Detected
+              </CardTitle>
+              <CardDescription>
+                Days with conflicts are marked with red borders in the calendar
+              </CardDescription>
+            </CardHeader>
           </Card>
+        )}
+
+        {viewMode === "month" ? (
+          schedules.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-12">
+                  <CalendarIcon className="mx-auto h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No assignments found</h3>
+                  <p className="text-muted-foreground">
+                    Start by creating date-specific staff assignments in your branches
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <MonthCalendar
+              schedules={filteredSchedules}
+              conflicts={conflicts}
+              onDayClick={handleDayClick}
+            />
+          )
         ) : (
-          <MonthCalendar
-            schedules={filteredSchedules}
-            conflicts={conflicts}
-            onDayClick={handleDayClick}
-          />
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xl font-bold">{format(dayViewDate, "EEEE, MMMM d, yyyy")}</h3>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setDayViewDate(new Date(dayViewDate.getTime() - 86400000))}
+                >
+                  Previous Day
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDayViewDate(new Date())}
+                >
+                  Today
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setDayViewDate(new Date(dayViewDate.getTime() + 86400000))}
+                >
+                  Next Day
+                </Button>
+              </div>
+            </div>
+            <StaffDayView date={dayViewDate} />
+          </div>
         )}
 
         <DayDetailDialog

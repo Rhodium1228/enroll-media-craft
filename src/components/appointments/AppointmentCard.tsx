@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Clock, User, Phone, Mail, Edit, Trash2, CheckCircle2, Globe, Building2 } from "lucide-react";
 import { AppointmentWithDetails, formatTimeRange, getAppointmentStatusColor } from "@/lib/appointmentUtils";
+import { getServiceTypeBadgeClass, getServiceTypeDotClass } from "@/lib/serviceColors";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -79,9 +80,19 @@ export const AppointmentCard = ({
               )}
               
               {appointment.service && (
-                <p className="text-sm text-muted-foreground mb-1">
-                  {appointment.service.title} ({appointment.service.duration} min)
-                </p>
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <div className="flex items-center gap-1.5">
+                    <div className={`w-2 h-2 rounded-full ${getServiceTypeDotClass((appointment.service as any).service_type)}`} />
+                    <p className="text-sm text-muted-foreground">
+                      {appointment.service.title} ({appointment.service.duration} min)
+                    </p>
+                  </div>
+                  {(appointment.service as any).service_type && (
+                    <Badge className={`text-xs capitalize ${getServiceTypeBadgeClass((appointment.service as any).service_type)}`}>
+                      {(appointment.service as any).service_type}
+                    </Badge>
+                  )}
+                </div>
               )}
               
               <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
