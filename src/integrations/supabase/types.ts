@@ -370,6 +370,69 @@ export type Database = {
           },
         ]
       }
+      staff_clock_records: {
+        Row: {
+          branch_id: string
+          clock_in_latitude: number | null
+          clock_in_longitude: number | null
+          clock_in_time: string
+          clock_out_latitude: number | null
+          clock_out_longitude: number | null
+          clock_out_time: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          staff_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          clock_in_latitude?: number | null
+          clock_in_longitude?: number | null
+          clock_in_time?: string
+          clock_out_latitude?: number | null
+          clock_out_longitude?: number | null
+          clock_out_time?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          staff_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          clock_in_latitude?: number | null
+          clock_in_longitude?: number | null
+          clock_in_time?: string
+          clock_out_latitude?: number | null
+          clock_out_longitude?: number | null
+          clock_out_time?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          staff_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_clock_records_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_clock_records_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_date_assignments: {
         Row: {
           branch_id: string
