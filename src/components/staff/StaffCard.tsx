@@ -100,6 +100,8 @@ export default function StaffCard({ staff, branchId, onEdit, onUpdate }: StaffCa
     switch (status) {
       case "active":
         return "bg-success text-success-foreground";
+      case "suspended":
+        return "bg-destructive text-destructive-foreground";
       case "inactive":
         return "bg-muted text-muted-foreground";
       case "on_leave":

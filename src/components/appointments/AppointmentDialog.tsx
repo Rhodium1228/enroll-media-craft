@@ -123,7 +123,8 @@ export const AppointmentDialog = ({
         staff:staff_id (
           id,
           first_name,
-          last_name
+          last_name,
+          status
         )
       `)
       .eq("branch_id", selectedBranch)
@@ -134,8 +135,13 @@ export const AppointmentDialog = ({
       return;
     }
 
+    // Filter out suspended staff
+    const activeStaff = data?.filter((item: any) => 
+      item.staff && item.staff.status !== 'suspended'
+    ) || [];
+
     const uniqueStaff = Array.from(
-      new Map(data?.map((item: any) => [item.staff.id, item.staff])).values()
+      new Map(activeStaff.map((item: any) => [item.staff.id, item.staff])).values()
     );
     setStaff(uniqueStaff as Staff[]);
   };

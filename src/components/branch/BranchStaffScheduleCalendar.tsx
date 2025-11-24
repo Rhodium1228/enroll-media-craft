@@ -140,7 +140,7 @@ export function BranchStaffScheduleCalendar({
   const fetchAvailableStaff = async () => {
     const { data, error } = await supabase
       .from("staff_branches")
-      .select("staff:staff_id(id, first_name, last_name)")
+      .select("staff:staff_id(id, first_name, last_name, status)")
       .eq("branch_id", branchId);
 
     if (error) {
@@ -152,7 +152,9 @@ export function BranchStaffScheduleCalendar({
       return;
     }
 
-    const staffList = data?.map((item: any) => item.staff).filter(Boolean) || [];
+    // Filter out suspended staff
+    const staffList = data?.map((item: any) => item.staff)
+      .filter((staff: any) => staff && staff.status !== 'suspended') || [];
     setAvailableStaff(staffList);
   };
 
