@@ -18,6 +18,7 @@ interface AppointmentTimelineViewProps {
   date: Date;
   onAppointmentClick?: (appointment: AppointmentWithDetails) => void;
   onStatusUpdate?: () => void;
+  recentlyUpdated?: Set<string>;
 }
 
 export const AppointmentTimelineView = ({
@@ -25,6 +26,7 @@ export const AppointmentTimelineView = ({
   date,
   onAppointmentClick,
   onStatusUpdate,
+  recentlyUpdated = new Set(),
 }: AppointmentTimelineViewProps) => {
   const isMobile = useIsMobile();
 
@@ -60,6 +62,7 @@ export const AppointmentTimelineView = ({
         date={date}
         onAppointmentClick={onAppointmentClick}
         onStatusUpdate={onStatusUpdate}
+        recentlyUpdated={recentlyUpdated}
       />
     );
   }
@@ -150,7 +153,9 @@ export const AppointmentTimelineView = ({
                     {staffAppointments.map((appointment) => (
                       <Card
                         key={appointment.id}
-                        className={`absolute top-1 h-14 cursor-pointer hover:shadow-md transition-shadow ${getAppointmentStatusColor(appointment.status)} border-l-4 overflow-hidden`}
+                        className={`absolute top-1 h-14 cursor-pointer hover:shadow-md transition-shadow ${getAppointmentStatusColor(appointment.status)} border-l-4 overflow-hidden ${
+                          recentlyUpdated.has(appointment.id) ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+                        }`}
                         style={getAppointmentStyle(appointment)}
                         onClick={() => onAppointmentClick?.(appointment)}
                       >

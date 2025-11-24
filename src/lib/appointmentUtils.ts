@@ -18,6 +18,7 @@ export interface Appointment {
   end_time: string;
   status: 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
   notes?: string;
+  booking_reference?: string;
   created_by: string;
   created_at: string;
   updated_at: string;

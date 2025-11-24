@@ -19,18 +19,21 @@ interface AppointmentCardViewProps {
   date: Date;
   onAppointmentClick?: (appointment: AppointmentWithDetails) => void;
   onStatusUpdate?: () => void;
+  recentlyUpdated?: Set<string>;
 }
 
 interface SwipeableCardProps {
   appointment: AppointmentWithDetails;
   onAppointmentClick?: (appointment: AppointmentWithDetails) => void;
   onStatusUpdate?: () => void;
+  isRecentlyUpdated?: boolean;
 }
 
 const SwipeableAppointmentCard = ({ 
   appointment, 
   onAppointmentClick,
-  onStatusUpdate 
+  onStatusUpdate,
+  isRecentlyUpdated = false
 }: SwipeableCardProps) => {
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -125,7 +128,9 @@ const SwipeableAppointmentCard = ({
         }}
       >
         <Card
-          className={`${getAppointmentStatusColor(appointment.status)} border-l-4 cursor-pointer active:scale-[0.98] transition-all shadow-sm hover:shadow-md`}
+          className={`${getAppointmentStatusColor(appointment.status)} border-l-4 cursor-pointer active:scale-[0.98] transition-all shadow-sm hover:shadow-md ${
+            isRecentlyUpdated ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+          }`}
           onClick={() => onAppointmentClick?.(appointment)}
         >
           <CardContent className="p-3 space-y-2.5">
@@ -221,6 +226,7 @@ export const AppointmentCardView = ({
   date,
   onAppointmentClick,
   onStatusUpdate,
+  recentlyUpdated = new Set(),
 }: AppointmentCardViewProps) => {
   const groupedAppointments = useMemo(
     () => groupAppointmentsByStaff(appointments),
@@ -251,6 +257,7 @@ export const AppointmentCardView = ({
             appointment={appointment}
             onAppointmentClick={onAppointmentClick}
             onStatusUpdate={onStatusUpdate}
+            isRecentlyUpdated={recentlyUpdated.has(appointment.id)}
           />
         ))}
       </div>
