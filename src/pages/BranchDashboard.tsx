@@ -64,11 +64,11 @@ const BranchDashboard = () => {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white mb-6">
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-4 sm:p-6 md:p-8 text-white mb-4 sm:mb-6">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="text-3xl sm:text-4xl font-bold">Analytics Dashboard</h1>
-            <p className="text-sm sm:text-base text-white/90 mt-2">Enterprise-level insights and performance metrics</p>
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold">Analytics Dashboard</h1>
+            <p className="text-xs sm:text-sm md:text-base text-white/90 mt-1 sm:mt-2">Enterprise-level insights and performance metrics</p>
           </div>
           <Button onClick={() => navigate('/')} variant="secondary" className="bg-white text-primary hover:bg-white/90 w-full sm:w-auto">
             <Plus className="mr-2 h-4 w-4" />
@@ -78,7 +78,7 @@ const BranchDashboard = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid gap-3 sm:gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+      <div className="grid gap-3 sm:gap-4 grid-cols-1 xs:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
         <StatCard
           title="Total Revenue"
           value={`$${analytics.kpis.totalRevenue.toFixed(2)}`}
