@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const menuItems = [
-  { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Branch Management", url: "/branches", icon: Building2 },
   { title: "Services", url: "/services", icon: Package },
@@ -140,8 +140,8 @@ export function AppSidebar() {
   };
 
   const isActive = (path: string) => {
-    if (path === "/dashboard") {
-      return currentPath === "/dashboard" || currentPath.startsWith("/branch/");
+    if (path === "/") {
+      return currentPath === "/" || currentPath.startsWith("/branch/");
     }
     return currentPath === path;
   };

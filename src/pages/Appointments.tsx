@@ -268,7 +268,7 @@ export default function Appointments() {
               <Button 
                 variant="ghost" 
                 size="icon" 
-                onClick={() => navigate("/dashboard")}
+                onClick={() => navigate("/")}
                 className="text-white hover:bg-white/20"
               >
                 <ArrowLeft className="h-5 w-5" />
