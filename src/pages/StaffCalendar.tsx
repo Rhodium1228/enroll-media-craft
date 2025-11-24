@@ -259,35 +259,36 @@ export default function StaffCalendar() {
           Back to Dashboard
         </Button>
 
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+        <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white mb-8">
+          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4">
             <div>
-              <h1 className="text-4xl font-bold text-foreground flex items-center gap-3">
-                <CalendarIcon className="h-10 w-10 text-primary" />
+              <h1 className="text-3xl sm:text-4xl font-bold flex items-center gap-3">
+                <CalendarIcon className="h-10 w-10" />
                 Staff Calendar
               </h1>
-              <p className="text-muted-foreground mt-2">
+              <p className="text-white/90 mt-2">
                 Monthly calendar showing staff date assignments across all branches
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-64">
-                <Select value={selectedStaff} onValueChange={setSelectedStaff}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Filter by staff" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All Staff</SelectItem>
-                    {allStaff.map((staff) => (
-                      <SelectItem key={staff.id} value={staff.id}>
-                        {staff.first_name} {staff.last_name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            <div className="w-full lg:w-64">
+              <Select value={selectedStaff} onValueChange={setSelectedStaff}>
+                <SelectTrigger className="bg-white text-foreground">
+                  <SelectValue placeholder="Filter by staff" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Staff</SelectItem>
+                  {allStaff.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      {staff.first_name} {staff.last_name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
+        </div>
+
+        <div className="mb-8">
 
           {conflicts.size > 0 && (
             <Card className="border-destructive mb-6 animate-fade-in">

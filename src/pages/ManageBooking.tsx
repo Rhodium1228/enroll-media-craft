@@ -146,17 +146,17 @@ export default function ManageBooking() {
     new Date(booking.date) >= new Date();
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background p-6">
+    <div className="min-h-screen bg-background p-6">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold">Manage Your Booking</h1>
-          <p className="text-muted-foreground">
+        <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white text-center">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">Manage Your Booking</h1>
+          <p className="text-white/90">
             Enter your booking reference and email to view or modify your appointment
           </p>
         </div>
 
         {!booking ? (
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle>Find Your Booking</CardTitle>
               <CardDescription>
@@ -209,7 +209,7 @@ export default function ManageBooking() {
         ) : (
           <div className="space-y-6">
             {/* Booking Details */}
-            <Card>
+            <Card className="hover:shadow-xl transition-all border-2 hover:border-primary/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div>

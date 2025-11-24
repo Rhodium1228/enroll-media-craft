@@ -65,16 +65,16 @@ const Index = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-accent/5 to-background">
-      <div className="container mx-auto px-4 py-16">
-        <div className="absolute top-4 right-4">
-          <Button variant="outline" onClick={handleSignOut} className="gap-2">
-            <LogOut className="w-4 h-4" />
-            Sign Out
-          </Button>
-        </div>
-        
-        <div className="text-center space-y-8 max-w-4xl mx-auto">
+    <div className="min-h-screen bg-background">
+      <div className="absolute top-4 right-4 z-10">
+        <Button variant="outline" onClick={handleSignOut} className="gap-2">
+          <LogOut className="w-4 h-4" />
+          Sign Out
+        </Button>
+      </div>
+      
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent py-16 px-4">
+        <div className="container mx-auto text-center space-y-6 max-w-4xl">
           <div className="inline-block">
             <img 
               src={logo} 
@@ -84,10 +84,15 @@ const Index = () => {
           </div>
           
           <div className="space-y-4">
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-xl text-white/90 max-w-2xl mx-auto">
               Professional Branch Management System with comprehensive enrolment capabilities
             </p>
           </div>
+        </div>
+      </div>
+      
+      <div className="container mx-auto px-4 py-12">
+        <div className="text-center space-y-8 max-w-4xl mx-auto">
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center flex-wrap">
             <Button 
@@ -127,20 +132,20 @@ const Index = () => {
             </Button>
           </div>
 
-          <div className="mt-16 grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
-            <div className="bg-card rounded-lg p-6 border shadow-sm hover:shadow-md transition-shadow">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+            <div className="bg-card rounded-lg p-6 border shadow-sm hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
               <h3 className="font-semibold text-lg mb-2 text-primary">Step 1: Basic Details</h3>
               <p className="text-muted-foreground text-sm">
                 Enter branch information including name, address, timezone, and operating hours
               </p>
             </div>
-            <div className="bg-card rounded-lg p-6 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-card rounded-lg p-6 border shadow-sm hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
               <h3 className="font-semibold text-lg mb-2 text-primary">Step 2: Media Upload</h3>
               <p className="text-muted-foreground text-sm">
                 Upload branch logo, hero images, gallery photos, and compliance documents
               </p>
             </div>
-            <div className="bg-card rounded-lg p-6 border shadow-sm hover:shadow-md transition-shadow">
+            <div className="bg-card rounded-lg p-6 border shadow-sm hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
               <h3 className="font-semibold text-lg mb-2 text-primary">Step 3: Review & Submit</h3>
               <p className="text-muted-foreground text-sm">
                 Review all information and submit for processing with instant cloud storage

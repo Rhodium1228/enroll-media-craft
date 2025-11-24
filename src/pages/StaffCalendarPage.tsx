@@ -217,35 +217,37 @@ export default function StaffCalendarPage() {
   return (
     <div className="min-h-screen bg-background p-6">
       <div className="max-w-7xl mx-auto space-y-6">
+        <Button variant="ghost" onClick={() => navigate("/staff")} className="mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Staff
+        </Button>
+        
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/staff")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
+        <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Avatar className="h-16 w-16">
+              <Avatar className="h-16 w-16 border-2 border-white">
                 <AvatarImage src={staff.profile_image_url || undefined} />
-                <AvatarFallback className="text-lg">
+                <AvatarFallback className="text-lg bg-white text-primary">
                   {staff.first_name[0]}
                   {staff.last_name[0]}
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h1 className="text-3xl font-bold">
+                <h1 className="text-3xl sm:text-4xl font-bold">
                   {staff.first_name} {staff.last_name}
                 </h1>
-                <p className="text-muted-foreground">Personal Calendar & Schedule</p>
+                <p className="text-white/90 mt-1">Personal Calendar & Schedule</p>
               </div>
             </div>
+            <Badge className={`${getStatusColor(staff.status)} border-2 border-white`}>
+              {staff.status.replace("_", " ").toUpperCase()}
+            </Badge>
           </div>
-          <Badge className={getStatusColor(staff.status)}>
-            {staff.status.replace("_", " ").toUpperCase()}
-          </Badge>
         </div>
 
         {/* Contact Info */}
-        <Card>
+        <Card className="hover:shadow-lg transition-shadow">
           <CardContent className="pt-6">
             <div className="flex flex-wrap gap-6">
               <div className="flex items-center gap-2">
