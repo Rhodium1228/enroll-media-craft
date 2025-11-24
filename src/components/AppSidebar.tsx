@@ -1,4 +1,4 @@
-import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, CalendarPlus, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -26,6 +26,7 @@ const menuItems = [
   { title: "Staff", url: "/staff", icon: Users },
   { title: "Staff Calendar", url: "/calendar", icon: Calendar },
   { title: "Appointments", url: "/appointments", icon: ClipboardList },
+  { title: "Public Booking", url: "/book", icon: CalendarPlus },
 ];
 
 export function AppSidebar() {
