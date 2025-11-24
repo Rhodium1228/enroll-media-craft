@@ -517,14 +517,14 @@ export default function PublicBooking() {
     <div className="min-h-screen bg-background">
       {/* Gradient Header Banner */}
       <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 text-primary-foreground">
-        <div className="max-w-7xl mx-auto px-6 py-8">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <CalendarIconLarge className="h-6 w-6" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+          <div className="flex items-center gap-3 sm:gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+              <CalendarIconLarge className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">Book an Appointment</h1>
-              <p className="text-primary-foreground/80 text-sm">
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold truncate">Book an Appointment</h1>
+              <p className="text-primary-foreground/80 text-xs sm:text-sm truncate">
                 Choose your service and find a time that works for you
               </p>
             </div>
@@ -532,14 +532,14 @@ export default function PublicBooking() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-4 sm:space-y-6">
         {/* Progress Steps */}
-        <div className="flex justify-center items-center gap-2">
+        <div className="flex justify-center items-center gap-1 sm:gap-2 overflow-x-auto">
           {[1, 2, 3, 4, 5].map((s) => (
-            <div key={s} className="flex items-center">
+            <div key={s} className="flex items-center flex-shrink-0">
               <div
                 className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
+                  "w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all",
                   step >= s
                     ? "bg-primary text-primary-foreground shadow-lg"
                     : "bg-muted text-muted-foreground"
@@ -560,8 +560,8 @@ export default function PublicBooking() {
         </div>
 
         <Card className="shadow-lg border-0">
-          <CardHeader className="border-b bg-muted/30">
-            <CardTitle className="text-xl">
+          <CardHeader className="border-b bg-muted/30 p-4 sm:p-6">
+            <CardTitle className="text-base sm:text-lg lg:text-xl">
               {step === 1 && (
                 <div className="flex items-center gap-2">
                   <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
@@ -604,11 +604,11 @@ export default function PublicBooking() {
               )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6 pt-6">
+          <CardContent className="space-y-4 sm:space-y-6 pt-4 sm:pt-6 p-4 sm:p-6">
             {/* Step 1: Branch Selection */}
             {step === 1 && (
-              <div className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-4 sm:space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                   {branches.map((branch) => (
                     <Card
                       key={branch.id}
@@ -620,15 +620,15 @@ export default function PublicBooking() {
                       )}
                       onClick={() => setSelectedBranch(branch.id)}
                     >
-                      <CardContent className="pt-6">
-                        <div className="space-y-3">
-                          <div className="flex items-start gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                              <MapPin className="h-5 w-5 text-primary" />
+                      <CardContent className="pt-4 sm:pt-6 p-4 sm:p-6">
+                        <div className="space-y-2 sm:space-y-3">
+                          <div className="flex items-start gap-2 sm:gap-3">
+                            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                              <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                             </div>
-                            <div className="flex-1">
-                              <h3 className="font-semibold text-lg">{branch.name}</h3>
-                              <p className="text-sm text-muted-foreground mt-1">{branch.address}</p>
+                            <div className="flex-1 min-w-0">
+                              <h3 className="font-semibold text-sm sm:text-base lg:text-lg truncate">{branch.name}</h3>
+                              <p className="text-xs sm:text-sm text-muted-foreground mt-1 line-clamp-2">{branch.address}</p>
                             </div>
                           </div>
                         </div>
@@ -638,7 +638,7 @@ export default function PublicBooking() {
                 </div>
 
                 <Button
-                  className="w-full h-12 text-base"
+                  className="w-full h-10 sm:h-12 text-sm sm:text-base"
                   disabled={!selectedBranch}
                   onClick={() => setStep(2)}
                 >

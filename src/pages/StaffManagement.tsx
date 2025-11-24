@@ -253,52 +253,58 @@ export default function StaffManagement() {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold">Staff Management</h1>
-            <p className="text-white/90 mt-2">
-              Onboard and manage staff across all branches
-            </p>
+    <div className="min-h-screen bg-background">
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent py-8 sm:py-12 px-4 sm:px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="text-white">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold">Staff Management</h1>
+              <p className="text-white/90 mt-2 text-sm sm:text-base">
+                Onboard and manage staff across all branches
+              </p>
+            </div>
+            <Button onClick={() => { setSelectedStaff(null); setDialogOpen(true); }} variant="secondary" className="bg-white text-primary hover:bg-white/90 w-full sm:w-auto">
+              <UserPlus className="mr-2 h-4 w-4" />
+              Add Staff
+            </Button>
           </div>
-          <Button onClick={() => { setSelectedStaff(null); setDialogOpen(true); }} variant="secondary" className="bg-white text-primary hover:bg-white/90 w-full sm:w-auto">
-            <UserPlus className="mr-2 h-4 w-4" />
-            Add Staff
-          </Button>
         </div>
       </div>
 
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
+
       {staff.length === 0 ? (
-        <div className="text-center py-12">
-          <p className="text-muted-foreground mb-4">
-            No staff members enrolled yet
-          </p>
-          <Button onClick={() => { setSelectedStaff(null); setDialogOpen(true); }}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Enroll First Staff Member
-          </Button>
-        </div>
+        <Card>
+          <CardContent className="text-center py-12">
+            <p className="text-muted-foreground mb-4 text-sm sm:text-base">
+              No staff members enrolled yet
+            </p>
+            <Button onClick={() => { setSelectedStaff(null); setDialogOpen(true); }}>
+              <UserPlus className="mr-2 h-4 w-4" />
+              Enroll First Staff Member
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
           {staff.map((staffMember) => (
             <Card key={staffMember.id} className="hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
-              <CardHeader>
+              <CardHeader className="p-4 sm:p-6">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
                     {staffMember.profile_image_url ? (
                       <img
                         src={staffMember.profile_image_url}
                         alt={`${staffMember.first_name} ${staffMember.last_name}`}
-                        className="w-12 h-12 rounded-full object-cover"
+                        className="w-10 h-10 sm:w-12 sm:h-12 rounded-full object-cover flex-shrink-0"
                       />
                     ) : (
-                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
-                        <User className="h-6 w-6 text-muted-foreground" />
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                        <User className="h-5 w-5 sm:h-6 sm:w-6 text-muted-foreground" />
                       </div>
                     )}
-                    <div>
-                      <h3 className="font-semibold text-lg">
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-semibold text-base sm:text-lg truncate">
                         {staffMember.first_name} {staffMember.last_name}
                       </h3>
                       <Badge className={getStatusColor(staffMember.status)} variant="secondary">
@@ -308,21 +314,21 @@ export default function StaffManagement() {
                   </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="space-y-3 mb-4">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Mail className="h-4 w-4" />
+              <CardContent className="p-4 sm:p-6 pt-0">
+                <div className="space-y-2 sm:space-y-3 mb-4">
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <Mail className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
                     <span className="truncate">{staffMember.email}</span>
                   </div>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    <span>{staffMember.phone}</span>
+                  <div className="flex items-center gap-2 text-xs sm:text-sm text-muted-foreground">
+                    <Phone className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
+                    <span className="truncate">{staffMember.phone}</span>
                   </div>
                   
                   <div className="pt-2 border-t">
-                    <div className="flex items-start gap-2 text-sm">
-                      <Building2 className="h-4 w-4 mt-0.5 text-muted-foreground" />
-                      <div className="flex-1">
+                    <div className="flex items-start gap-2 text-xs sm:text-sm">
+                      <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mt-0.5 text-muted-foreground flex-shrink-0" />
+                      <div className="flex-1 min-w-0">
                         <p className="text-xs text-muted-foreground mb-1">Enrolled at:</p>
                         {branches[staffMember.id]?.length > 0 ? (
                           <div className="flex flex-wrap gap-1">
@@ -330,7 +336,7 @@ export default function StaffManagement() {
                               <Badge
                                 key={branch.id}
                                 variant="outline"
-                                className="text-xs cursor-pointer"
+                                className="text-xs cursor-pointer max-w-full truncate"
                                 onClick={() => navigate(`/branch/${branch.id}`)}
                               >
                                 {branch.name}
@@ -348,37 +354,40 @@ export default function StaffManagement() {
                   <Button
                     variant="outline"
                     size="sm"
-                    className="w-full"
+                    className="w-full text-xs sm:text-sm"
                     onClick={() => navigate(`/staff/${staffMember.id}/calendar`)}
                   >
-                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    <CalendarIcon className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
                     View Calendar
                   </Button>
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      className="flex-1"
+                      className="flex-1 text-xs sm:text-sm"
                       onClick={() => handleEdit(staffMember)}
                     >
-                      <Edit2 className="h-4 w-4 mr-2" />
-                      Edit
+                      <Edit2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      <span className="hidden xs:inline">Edit</span>
+                      <span className="xs:hidden">Edit</span>
                     </Button>
                     <Button
                       size="sm"
-                      className="flex-1"
+                      className="flex-1 text-xs sm:text-sm"
                       onClick={() => handleAssignToBranch(staffMember)}
                     >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Assign
+                      <Plus className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                      <span className="hidden xs:inline">Assign</span>
+                      <span className="xs:hidden">Assign</span>
                     </Button>
                   </div>
                 </div>
               </CardContent>
             </Card>
-          ))}
+        ))}
         </div>
       )}
+      </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
