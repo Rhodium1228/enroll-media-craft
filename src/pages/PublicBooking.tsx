@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays } from "date-fns";
-import { CalendarIcon, Clock, DollarSign, Loader2, MapPin, User } from "lucide-react";
+import { CalendarIcon, Clock, DollarSign, Loader2, MapPin, User, Calendar as CalendarIconLarge, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
 
@@ -429,92 +429,119 @@ export default function PublicBooking() {
 
   if (step === 6 && bookingReference) {
     return (
-      <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex items-center justify-center p-6">
-        <Card className="max-w-2xl w-full">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4 w-16 h-16 bg-success/20 rounded-full flex items-center justify-center">
-              <CalendarIcon className="h-8 w-8 text-success" />
-            </div>
-            <CardTitle className="text-2xl">Booking Confirmed!</CardTitle>
-            <CardDescription>Your appointment has been successfully scheduled</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="bg-muted/50 rounded-lg p-6 space-y-3">
+      <div className="min-h-screen bg-background">
+        <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 text-primary-foreground">
+          <div className="max-w-7xl mx-auto px-6 py-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                <CalendarIconLarge className="h-6 w-6" />
+              </div>
               <div>
-                <p className="text-sm text-muted-foreground">Booking Reference</p>
-                <p className="text-2xl font-bold font-mono">{bookingReference}</p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Save this reference to manage your booking
+                <h1 className="text-2xl font-bold">Booking Confirmation</h1>
+                <p className="text-primary-foreground/80 text-sm">
+                  Your appointment has been successfully scheduled
                 </p>
               </div>
-              
-              <Separator />
-              
-              <div className="space-y-2">
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Service</span>
-                  <span className="font-semibold">{selectedServiceDetails?.title}</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="max-w-3xl mx-auto px-6 py-8">
+          <Card className="shadow-lg border-0">
+            <CardHeader className="text-center border-b bg-muted/30">
+              <div className="mx-auto mb-4 w-20 h-20 bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-2xl flex items-center justify-center">
+                <CalendarIcon className="h-10 w-10 text-green-600" />
+              </div>
+              <CardTitle className="text-3xl text-green-600">Booking Confirmed!</CardTitle>
+              <CardDescription className="text-base mt-2">Your appointment has been successfully scheduled</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-6">
+              <div className="bg-gradient-to-br from-primary/5 to-primary/10 rounded-xl p-6 space-y-4 border-2 border-primary/20">
+                <div className="text-center">
+                  <p className="text-sm text-muted-foreground font-medium mb-1">Booking Reference</p>
+                  <p className="text-3xl font-bold font-mono text-primary">{bookingReference}</p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Save this reference to manage your booking
+                  </p>
                 </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Date</span>
-                  <span className="font-semibold">{selectedDate && format(selectedDate, "PPP")}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Time</span>
-                  <span className="font-semibold">{selectedTime}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-muted-foreground">Location</span>
-                  <span className="font-semibold">{selectedBranchDetails?.name}</span>
+                
+                <Separator className="bg-border/50" />
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground font-medium">Service</span>
+                    <span className="font-semibold text-lg">{selectedServiceDetails?.title}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground font-medium">Date</span>
+                    <span className="font-semibold text-lg">{selectedDate && format(selectedDate, "PPP")}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground font-medium">Time</span>
+                    <span className="font-semibold text-lg">{selectedTime}</span>
+                  </div>
+                  <div className="flex justify-between items-center py-2">
+                    <span className="text-muted-foreground font-medium">Location</span>
+                    <span className="font-semibold text-lg">{selectedBranchDetails?.name}</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="space-y-3">
-              <Button
-                className="w-full"
-                onClick={() => navigate(`/manage-booking`)}
-              >
-                Manage Booking
-              </Button>
-              <Button
-                variant="outline"
-                className="w-full"
-                onClick={() => window.location.reload()}
-              >
-                Book Another Appointment
-              </Button>
-            </div>
+              <div className="space-y-3">
+                <Button
+                  className="w-full h-12 text-base shadow-lg"
+                  onClick={() => navigate(`/manage-booking`)}
+                >
+                  Manage Booking
+                </Button>
+                <Button
+                  variant="outline"
+                  className="w-full h-12 text-base"
+                  onClick={() => window.location.reload()}
+                >
+                  Book Another Appointment
+                </Button>
+              </div>
 
-            <div className="text-center text-sm text-muted-foreground">
-              <p>A confirmation email has been sent to {customerEmail}</p>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="text-center text-sm text-muted-foreground bg-muted/30 rounded-lg p-4">
+                <p>A confirmation email has been sent to <span className="font-semibold">{customerEmail}</span></p>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background p-6">
-      <div className="max-w-4xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="text-center space-y-2">
-          <h1 className="text-4xl font-bold">Book an Appointment</h1>
-          <p className="text-muted-foreground">
-            Choose your service and find a time that works for you
-          </p>
+    <div className="min-h-screen bg-background">
+      {/* Gradient Header Banner */}
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-primary/70 text-primary-foreground">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
+              <CalendarIconLarge className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold">Book an Appointment</h1>
+              <p className="text-primary-foreground/80 text-sm">
+                Choose your service and find a time that works for you
+              </p>
+            </div>
+          </div>
         </div>
+      </div>
 
+      <div className="max-w-4xl mx-auto px-6 py-8 space-y-6">
         {/* Progress Steps */}
         <div className="flex justify-center items-center gap-2">
           {[1, 2, 3, 4, 5].map((s) => (
             <div key={s} className="flex items-center">
               <div
                 className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
+                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all",
                   step >= s
-                    ? "bg-primary text-primary-foreground"
+                    ? "bg-primary text-primary-foreground shadow-lg"
                     : "bg-muted text-muted-foreground"
                 )}
               >
@@ -523,7 +550,7 @@ export default function PublicBooking() {
               {s < 5 && (
                 <div
                   className={cn(
-                    "w-12 h-1 mx-1 transition-all",
+                    "w-12 h-1 mx-1 transition-all rounded-full",
                     step > s ? "bg-primary" : "bg-muted"
                   )}
                 />
@@ -532,90 +559,140 @@ export default function PublicBooking() {
           ))}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>
-              {step === 1 && "Select Location"}
-              {step === 2 && "Select Service"}
-              {step === 3 && "Choose Your Stylist"}
-              {step === 4 && "Pick Date & Time"}
-              {step === 5 && "Your Details"}
+        <Card className="shadow-lg border-0">
+          <CardHeader className="border-b bg-muted/30">
+            <CardTitle className="text-xl">
+              {step === 1 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <MapPin className="h-4 w-4 text-primary" />
+                  </div>
+                  Select Location
+                </div>
+              )}
+              {step === 2 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Scissors className="h-4 w-4 text-primary" />
+                  </div>
+                  Select Service
+                </div>
+              )}
+              {step === 3 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  Choose Your Stylist
+                </div>
+              )}
+              {step === 4 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <Clock className="h-4 w-4 text-primary" />
+                  </div>
+                  Pick Date & Time
+                </div>
+              )}
+              {step === 5 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                    <User className="h-4 w-4 text-primary" />
+                  </div>
+                  Your Details
+                </div>
+              )}
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
+          <CardContent className="space-y-6 pt-6">
             {/* Step 1: Branch Selection */}
             {step === 1 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Select Branch</Label>
-                  <Select value={selectedBranch} onValueChange={setSelectedBranch}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Choose a location" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {branches.map((branch) => (
-                        <SelectItem key={branch.id} value={branch.id}>
-                          <div className="flex items-center gap-2">
-                            <MapPin className="h-4 w-4" />
-                            {branch.name}
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {branches.map((branch) => (
+                    <Card
+                      key={branch.id}
+                      className={cn(
+                        "cursor-pointer transition-all hover:shadow-md border-2",
+                        selectedBranch === branch.id 
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:border-primary/50"
+                      )}
+                      onClick={() => setSelectedBranch(branch.id)}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="space-y-3">
+                          <div className="flex items-start gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                              <MapPin className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-lg">{branch.name}</h3>
+                              <p className="text-sm text-muted-foreground mt-1">{branch.address}</p>
+                            </div>
                           </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
 
                 <Button
-                  className="w-full"
+                  className="w-full h-12 text-base"
                   disabled={!selectedBranch}
                   onClick={() => setStep(2)}
                 >
-                  Continue
+                  Continue to Services
                 </Button>
               </div>
             )}
 
             {/* Step 2: Service Selection */}
             {step === 2 && (
-              <div className="space-y-4">
-                <div className="space-y-3">
-                  <Label>Select Service</Label>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {services.map((service) => (
-                      <Card
-                        key={service.id}
-                        className={cn(
-                          "cursor-pointer transition-all hover:shadow-md",
-                          selectedService === service.id && "ring-2 ring-primary"
-                        )}
-                        onClick={() => setSelectedService(service.id)}
-                      >
-                        <CardContent className="pt-4">
-                          <div className="space-y-2">
-                            <h3 className="font-semibold">{service.title}</h3>
-                            <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <div className="flex items-center gap-1">
-                                <Clock className="h-4 w-4" />
-                                {service.duration} min
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {services.map((service) => (
+                    <Card
+                      key={service.id}
+                      className={cn(
+                        "cursor-pointer transition-all hover:shadow-md border-2",
+                        selectedService === service.id 
+                          ? "border-primary bg-primary/5" 
+                          : "border-border hover:border-primary/50"
+                      )}
+                      onClick={() => setSelectedService(service.id)}
+                    >
+                      <CardContent className="pt-6">
+                        <div className="space-y-4">
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3 flex-1">
+                              <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                                <Scissors className="h-5 w-5 text-primary" />
                               </div>
-                              <div className="flex items-center gap-1">
-                                <DollarSign className="h-4 w-4" />
-                                {service.cost}
+                              <div>
+                                <h3 className="font-semibold text-lg">{service.title}</h3>
+                                <div className="flex items-center gap-1 text-sm text-muted-foreground mt-1">
+                                  <Clock className="h-3 w-3" />
+                                  {service.duration} mins
+                                </div>
                               </div>
                             </div>
+                            <div className="text-right">
+                              <div className="text-2xl font-bold text-primary">${service.cost}</div>
+                            </div>
                           </div>
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
 
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(1)}>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(1)}>
                     Back
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="flex-1 h-12 text-base"
                     disabled={!selectedService}
                     onClick={() => setStep(3)}
                   >
@@ -627,42 +704,48 @@ export default function PublicBooking() {
 
             {/* Step 3: Staff Selection */}
             {step === 3 && (
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {loading ? (
                   <div className="flex items-center justify-center py-12">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : availableStaff.length > 0 ? (
                   <>
-                    <div className="space-y-3">
-                      <Label>Choose Your Stylist (Optional)</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Select a preferred stylist or skip to auto-assign
-                      </p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-4">
+                      <div>
+                        <Label className="text-base">Choose Your Stylist (Optional)</Label>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Select a preferred stylist or skip to auto-assign
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {availableStaff.map((staff) => (
                           <Card
                             key={staff.id}
                             className={cn(
-                              "cursor-pointer transition-all hover:shadow-md",
-                              selectedStaff === staff.id && "ring-2 ring-primary"
+                              "cursor-pointer transition-all hover:shadow-md border-2",
+                              selectedStaff === staff.id 
+                                ? "border-primary bg-primary/5" 
+                                : "border-border hover:border-primary/50"
                             )}
                             onClick={() => setSelectedStaff(staff.id)}
                           >
-                            <CardContent className="pt-4">
-                              <div className="flex items-center gap-3">
-                                <Avatar>
+                            <CardContent className="pt-6">
+                              <div className="flex items-center gap-4">
+                                <Avatar className="w-12 h-12">
                                   <AvatarImage src={staff.profile_image_url || undefined} />
-                                  <AvatarFallback>
+                                  <AvatarFallback className="bg-gradient-to-br from-primary/20 to-primary/10 text-primary font-semibold">
                                     {staff.first_name[0]}
                                     {staff.last_name[0]}
                                   </AvatarFallback>
                                 </Avatar>
-                                <div>
-                                  <p className="font-semibold">
+                                <div className="flex-1">
+                                  <p className="font-semibold text-base">
                                     {staff.first_name} {staff.last_name}
                                   </p>
-                                  <p className="text-xs text-muted-foreground">Available</p>
+                                  <Badge variant="secondary" className="mt-1 text-xs">
+                                    Available
+                                  </Badge>
                                 </div>
                               </div>
                             </CardContent>
@@ -673,18 +756,20 @@ export default function PublicBooking() {
                   </>
                 ) : (
                   <div className="text-center py-12 text-muted-foreground">
-                    <User className="h-12 w-12 mx-auto mb-2 opacity-50" />
-                    <p>No stylists offer this service</p>
+                    <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                      <User className="h-8 w-8" />
+                    </div>
+                    <p className="font-medium">No stylists offer this service</p>
                     <p className="text-sm mt-1">Please contact the branch directly</p>
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(2)}>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(2)}>
                     Back
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="flex-1 h-12 text-base"
                     disabled={availableStaff.length === 0}
                     onClick={() => setStep(4)}
                   >
@@ -696,20 +781,20 @@ export default function PublicBooking() {
 
             {/* Step 4: Date and Time Selection */}
             {step === 4 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Select Date</Label>
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-base">Select Date</Label>
                   <Popover>
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
                         className={cn(
-                          "w-full justify-start text-left font-normal",
+                          "w-full h-12 justify-start text-left font-normal text-base",
                           !selectedDate && "text-muted-foreground"
                         )}
                       >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {selectedDate ? format(selectedDate, "PPP") : "Pick a date"}
+                        <CalendarIcon className="mr-2 h-5 w-5" />
+                        {selectedDate ? format(selectedDate, "PPPP") : "Pick a date"}
                       </Button>
                     </PopoverTrigger>
                     <PopoverContent className="w-auto p-0" align="start">
@@ -726,16 +811,19 @@ export default function PublicBooking() {
                 </div>
 
                 {selectedDate && timeSlots.length > 0 && (
-                  <div className="space-y-2">
-                    <Label>Select Time</Label>
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-2 max-h-[300px] overflow-y-auto p-2">
+                  <div className="space-y-3">
+                    <Label className="text-base">Select Time</Label>
+                    <div className="grid grid-cols-3 md:grid-cols-5 gap-2 max-h-[320px] overflow-y-auto p-1 border rounded-lg">
                       {timeSlots.map((time) => (
                         <Button
                           key={time}
                           variant={selectedTime === time ? "default" : "outline"}
                           size="sm"
                           onClick={() => setSelectedTime(time)}
-                          className="text-sm"
+                          className={cn(
+                            "text-sm font-medium h-10",
+                            selectedTime === time && "shadow-lg"
+                          )}
                         >
                           {time}
                         </Button>
@@ -744,12 +832,12 @@ export default function PublicBooking() {
                   </div>
                 )}
 
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(3)}>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(3)}>
                     Back
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="flex-1 h-12 text-base"
                     disabled={!selectedDate || !selectedTime}
                     onClick={() => setStep(5)}
                   >
@@ -761,91 +849,101 @@ export default function PublicBooking() {
 
             {/* Step 5: Customer Details */}
             {step === 5 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name">Full Name *</Label>
-                  <Input
-                    id="name"
-                    placeholder="John Doe"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                  />
-                </div>
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name" className="text-base">Full Name *</Label>
+                    <Input
+                      id="name"
+                      placeholder="John Doe"
+                      className="h-11"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="email">Email Address *</Label>
-                  <Input
-                    id="email"
-                    type="email"
-                    placeholder="john@example.com"
-                    value={customerEmail}
-                    onChange={(e) => setCustomerEmail(e.target.value)}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email" className="text-base">Email Address *</Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="john@example.com"
+                      className="h-11"
+                      value={customerEmail}
+                      onChange={(e) => setCustomerEmail(e.target.value)}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="phone">Phone Number</Label>
-                  <Input
-                    id="phone"
-                    type="tel"
-                    placeholder="+1234567890"
-                    value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
-                  />
-                </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="phone" className="text-base">Phone Number</Label>
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="+1234567890"
+                      className="h-11"
+                      value={customerPhone}
+                      onChange={(e) => setCustomerPhone(e.target.value)}
+                    />
+                  </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Additional Notes (Optional)</Label>
-                  <Textarea
-                    id="notes"
-                    placeholder="Any special requests or information..."
-                    rows={3}
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                  />
+                  <div className="space-y-2">
+                    <Label htmlFor="notes" className="text-base">Additional Notes (Optional)</Label>
+                    <Textarea
+                      id="notes"
+                      placeholder="Any special requests or information..."
+                      rows={3}
+                      value={notes}
+                      onChange={(e) => setNotes(e.target.value)}
+                    />
+                  </div>
                 </div>
 
                 {/* Booking Summary */}
-                <Card className="bg-muted/50">
-                  <CardHeader>
-                    <CardTitle className="text-lg">Booking Summary</CardTitle>
+                <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10">
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center">
+                        <CalendarIcon className="h-4 w-4 text-primary" />
+                      </div>
+                      Booking Summary
+                    </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Service</span>
+                  <CardContent className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-muted-foreground text-sm">Service</span>
                       <span className="font-semibold">{selectedServiceDetails?.title}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Date</span>
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-muted-foreground text-sm">Date</span>
                       <span className="font-semibold">{selectedDate && format(selectedDate, "PPP")}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Time</span>
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-muted-foreground text-sm">Time</span>
                       <span className="font-semibold">{selectedTime}</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Duration</span>
-                      <span className="font-semibold">{selectedServiceDetails?.duration} min</span>
+                    <div className="flex justify-between items-center py-2 border-b border-border/50">
+                      <span className="text-muted-foreground text-sm">Duration</span>
+                      <span className="font-semibold">{selectedServiceDetails?.duration} mins</span>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cost</span>
-                      <span className="font-semibold">${selectedServiceDetails?.cost}</span>
+                    <div className="flex justify-between items-center py-2">
+                      <span className="text-muted-foreground text-sm">Cost</span>
+                      <span className="font-bold text-xl text-primary">${selectedServiceDetails?.cost}</span>
                     </div>
                   </CardContent>
                 </Card>
 
-                <div className="flex gap-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setStep(4)}>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1 h-12" onClick={() => setStep(4)}>
                     Back
                   </Button>
                   <Button
-                    className="flex-1"
+                    className="flex-1 h-12 text-base shadow-lg"
                     disabled={loading || !customerName || !customerEmail}
                     onClick={handleSubmit}
                   >
                     {loading ? (
                       <>
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                         Booking...
                       </>
                     ) : (
