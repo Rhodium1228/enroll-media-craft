@@ -17,6 +17,7 @@ interface Branch {
   latitude: number | null;
   longitude: number | null;
   geofence_radius: number;
+  created_by: string;
 }
 
 interface ActiveClockRecord {
@@ -71,7 +72,7 @@ export default function StaffClockInOut() {
       const branchIds = assignments.map(a => a.branch_id);
       const { data: branchesData, error } = await supabase
         .from('branches')
-        .select('id, name, address, latitude, longitude, geofence_radius')
+        .select('id, name, address, latitude, longitude, geofence_radius, created_by')
         .in('id', branchIds)
         .eq('status', 'active');
 
@@ -144,6 +145,9 @@ export default function StaffClockInOut() {
 
     setLoading(true);
     try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
       const branch = branches.find(b => b.id === selectedBranch);
       if (!branch) throw new Error('Branch not found');
 
@@ -162,15 +166,36 @@ export default function StaffClockInOut() {
             `You are ${validation.distance}m away from the branch. Must be within ${branch.geofence_radius}m to clock in.`,
             { duration: 5000 }
           );
+
+          // Get staff ID
+          const { data: staffData } = await supabase
+            .from('staff')
+            .select('id')
+            .eq('email', user.email)
+            .single();
+
+          // Create notification for admin
+          if (staffData) {
+            await supabase.from('admin_notifications').insert({
+              admin_id: branch.created_by,
+              staff_id: staffData.id,
+              branch_id: branch.id,
+              notification_type: 'geofence_violation',
+              message: `Staff attempted to clock in ${validation.distance}m away from ${branch.name} (allowed: ${branch.geofence_radius}m)`,
+              metadata: {
+                action: 'clock_in',
+                distance: validation.distance,
+                allowed_radius: branch.geofence_radius,
+              }
+            });
+          }
+          
           return;
         }
       } else {
         toast.error('Branch GPS coordinates not configured. Contact admin.');
         return;
       }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('User not authenticated');
 
       const { data: staffData } = await supabase
         .from('staff')
@@ -232,6 +257,33 @@ export default function StaffClockInOut() {
             `You are ${validation.distance}m away from the branch. Must be within ${branch.geofence_radius}m to clock out.`,
             { duration: 5000 }
           );
+
+          // Get staff ID
+          const { data: { user } } = await supabase.auth.getUser();
+          if (user) {
+            const { data: staffData } = await supabase
+              .from('staff')
+              .select('id')
+              .eq('email', user.email)
+              .single();
+
+            // Create notification for admin
+            if (staffData) {
+              await supabase.from('admin_notifications').insert({
+                admin_id: branch.created_by,
+                staff_id: staffData.id,
+                branch_id: branch.id,
+                notification_type: 'geofence_violation',
+                message: `Staff attempted to clock out ${validation.distance}m away from ${branch.name} (allowed: ${branch.geofence_radius}m)`,
+                metadata: {
+                  action: 'clock_out',
+                  distance: validation.distance,
+                  allowed_radius: branch.geofence_radius,
+                }
+              });
+            }
+          }
+          
           return;
         }
       }

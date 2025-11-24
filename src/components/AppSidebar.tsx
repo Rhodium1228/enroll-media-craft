@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, CalendarPlus, UserCircle, Clock, MapPin, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, CalendarPlus, UserCircle, Clock, MapPin, LogOut, Bell } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ import {
 
 const menuItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
+  { title: "Notifications", url: "/notifications", icon: Bell },
   { title: "Branch Management", url: "/branches", icon: Building2 },
   { title: "Services", url: "/services", icon: Package },
   { title: "Staff", url: "/staff", icon: Users },
@@ -38,6 +39,7 @@ interface MenuCounts {
   appointments: number;
   staff: number;
   branches: number;
+  notifications: number;
 }
 
 export function AppSidebar() {
@@ -49,6 +51,7 @@ export function AppSidebar() {
     appointments: 0,
     staff: 0,
     branches: 0,
+    notifications: 0,
   });
 
   useEffect(() => {
@@ -76,10 +79,18 @@ export function AppSidebar() {
       })
       .subscribe();
 
+    const notificationsChannel = supabase
+      .channel('sidebar-notifications')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'admin_notifications' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
     return () => {
       supabase.removeChannel(appointmentsChannel);
       supabase.removeChannel(staffChannel);
       supabase.removeChannel(branchesChannel);
+      supabase.removeChannel(notificationsChannel);
     };
   }, []);
 
@@ -109,10 +120,18 @@ export function AppSidebar() {
         .eq('created_by', user.id)
         .in('status', ['active', 'pending']);
 
+      // Fetch unread notifications count
+      const { count: notificationsCount } = await supabase
+        .from('admin_notifications')
+        .select('*', { count: 'exact', head: true })
+        .eq('admin_id', user.id)
+        .eq('is_read', false);
+
       setCounts({
         appointments: appointmentsCount || 0,
         staff: staffCount || 0,
         branches: branchesCount || 0,
+        notifications: notificationsCount || 0,
       });
     } catch (error) {
       console.error('Error fetching sidebar counts:', error);
@@ -137,6 +156,13 @@ export function AppSidebar() {
       return (
         <Badge className="ml-auto bg-primary text-primary-foreground hover:bg-primary/90 min-w-[1.5rem] h-5 flex items-center justify-center px-1.5">
           {counts.appointments > 99 ? '99+' : counts.appointments}
+        </Badge>
+      );
+    }
+    if (url === "/notifications" && counts.notifications > 0) {
+      return (
+        <Badge variant="destructive" className="ml-auto min-w-[1.5rem] h-5 flex items-center justify-center px-1.5">
+          {counts.notifications > 99 ? '99+' : counts.notifications}
         </Badge>
       );
     }
