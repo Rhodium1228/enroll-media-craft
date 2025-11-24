@@ -3,9 +3,10 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { Edit2, Trash2, User, Mail, Phone, Building2 } from "lucide-react";
+import { Edit2, Trash2, User, Mail, Phone, Building2, Calendar } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
 
 interface Staff {
   id: string;
@@ -35,6 +36,7 @@ export default function StaffCard({ staff, branchId, onEdit, onUpdate }: StaffCa
   const [enrolledBranches, setEnrolledBranches] = useState<Branch[]>([]);
   const [loadingBranches, setLoadingBranches] = useState(true);
   const { toast } = useToast();
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchEnrolledBranches();
@@ -178,6 +180,15 @@ export default function StaffCard({ staff, branchId, onEdit, onUpdate }: StaffCa
             </div>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={() => navigate(`/staff/${staff.id}/calendar`)}
+            >
+              <Calendar className="h-4 w-4 mr-2" />
+              Calendar
+            </Button>
             <Button
               variant="outline"
               size="sm"
