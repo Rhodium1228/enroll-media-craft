@@ -7,11 +7,13 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Package, DollarSign, Clock, Trash2, Edit, TrendingUp, Calendar, Star, Users } from "lucide-react";
+import { Plus, Package, DollarSign, Clock, Trash2, Edit, TrendingUp, Calendar, Star, Users, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
+import { ImageCropper } from "@/components/branch/ImageCropper";
+import { compressGalleryImage } from "@/lib/imageCompression";
 
 interface Branch {
   id: string;
@@ -70,6 +72,10 @@ export default function Services() {
     cost: "",
     branch_id: "",
   });
+
+  const [serviceImage, setServiceImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [cropImage, setCropImage] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -216,12 +222,31 @@ export default function Services() {
     }
 
     try {
+      let imageUrl = editingService?.image_url || null;
+
+      // Upload image if a new one was selected
+      if (serviceImage) {
+        const fileName = `${Date.now()}-${serviceImage.name}`;
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from("service-images")
+          .upload(fileName, serviceImage);
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("service-images")
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrl;
+      }
+
       const serviceData = {
         title: formData.title,
         service_type: formData.service_type || null,
         duration: parseInt(formData.duration),
         cost: parseFloat(formData.cost),
         branch_id: formData.branch_id,
+        image_url: imageUrl,
       };
 
       if (editingService) {
@@ -259,6 +284,7 @@ export default function Services() {
       cost: service.cost.toString(),
       branch_id: service.branch_id,
     });
+    setImagePreview(service.image_url || null);
     setDialogOpen(true);
   };
 
@@ -289,6 +315,44 @@ export default function Services() {
       branch_id: "",
     });
     setEditingService(null);
+    setServiceImage(null);
+    setImagePreview(null);
+  };
+
+  const handleImageSelect = async (file: File) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Service images must be JPG, PNG, or WEBP");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Service images must be less than 4MB");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setCropImage(imageUrl);
+  };
+
+  const handleCropComplete = async (croppedBlob: Blob) => {
+    try {
+      const croppedFile = new File([croppedBlob], `service-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+
+      const compressionResult = await compressGalleryImage(croppedFile);
+      const preview = URL.createObjectURL(compressionResult.file);
+
+      setServiceImage(compressionResult.file);
+      setImagePreview(preview);
+
+      toast.success("Service image added");
+    } catch (error) {
+      console.error("Error processing image:", error);
+      toast.error("Failed to process image");
+    } finally {
+      setCropImage(null);
+    }
   };
 
   const handleDialogChange = (open: boolean) => {
@@ -410,6 +474,54 @@ export default function Services() {
                     />
                   </div>
 
+                  <div>
+                    <Label>Service Image (Optional)</Label>
+                    <div className="mt-2">
+                      {imagePreview ? (
+                        <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-border">
+                          <img
+                            src={imagePreview}
+                            alt="Service preview"
+                            className="w-full h-full object-cover"
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="icon"
+                            className="absolute top-2 right-2"
+                            onClick={() => {
+                              setServiceImage(null);
+                              setImagePreview(null);
+                            }}
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <label className="flex flex-col items-center justify-center w-full h-48 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                          <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                            <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
+                            <p className="mb-2 text-sm text-muted-foreground">
+                              <span className="font-semibold">Click to upload</span> service image
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              JPG, PNG or WEBP (MAX. 4MB)
+                            </p>
+                          </div>
+                          <input
+                            type="file"
+                            className="hidden"
+                            accept="image/jpeg,image/png,image/jpg,image/webp"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleImageSelect(file);
+                            }}
+                          />
+                        </label>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="flex justify-end gap-2">
                     <Button type="button" variant="outline" onClick={() => handleDialogChange(false)}>
                       Cancel
@@ -445,7 +557,16 @@ export default function Services() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service) => (
-            <Card key={service.id} className="hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
+            <Card key={service.id} className="hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20 overflow-hidden">
+              {service.image_url && (
+                <div className="w-full h-48 overflow-hidden bg-muted">
+                  <img
+                    src={service.image_url}
+                    alt={service.title}
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
@@ -621,6 +742,16 @@ export default function Services() {
         </div>
       )}
       </div>
+
+      {cropImage && (
+        <ImageCropper
+          image={cropImage}
+          aspectRatio={4 / 3}
+          onCropComplete={handleCropComplete}
+          onCancel={() => setCropImage(null)}
+          title="Crop Service Image"
+        />
+      )}
     </div>
   );
 }
