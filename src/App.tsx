@@ -18,6 +18,7 @@ import PublicBooking from "./pages/PublicBooking";
 import ManageBooking from "./pages/ManageBooking";
 import SubmitReview from "./pages/SubmitReview";
 import CustomerPortal from "./pages/CustomerPortal";
+import StaffClockRecords from "./pages/StaffClockRecords";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -110,6 +111,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <Appointments />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/clock-records"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <StaffClockRecords />
                 </AppLayout>
               </ProtectedRoute>
             }
