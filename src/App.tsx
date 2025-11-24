@@ -17,6 +17,7 @@ import Appointments from "./pages/Appointments";
 import PublicBooking from "./pages/PublicBooking";
 import ManageBooking from "./pages/ManageBooking";
 import SubmitReview from "./pages/SubmitReview";
+import CustomerPortal from "./pages/CustomerPortal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
         <Route path="/book" element={<PublicBooking />} />
         <Route path="/manage-booking" element={<ManageBooking />} />
         <Route path="/submit-review" element={<SubmitReview />} />
+        <Route path="/my-bookings" element={<CustomerPortal />} />
           <Route
             path="/dashboard"
             element={
