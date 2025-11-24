@@ -85,6 +85,50 @@ export default function PublicBooking() {
     }
   }, [selectedService, selectedDate, selectedTime]);
 
+  // Real-time subscription for appointment changes
+  useEffect(() => {
+    if (!selectedBranch || !selectedDate) return;
+
+    const dateStr = format(selectedDate, "yyyy-MM-dd");
+
+    const channel = supabase
+      .channel('appointments-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `branch_id=eq.${selectedBranch}`,
+        },
+        (payload) => {
+          console.log('Appointment change detected:', payload);
+          
+          // Check if the change affects the currently selected date
+          const appointmentDate = payload.new?.date || payload.old?.date;
+          if (appointmentDate === dateStr) {
+            toast({
+              title: "Availability Updated",
+              description: "Time slots have been updated. Please review available times.",
+            });
+            
+            // Refresh time slots and staff availability
+            if (selectedService) {
+              generateTimeSlots();
+            }
+            if (selectedService && selectedTime) {
+              fetchAvailableStaff();
+            }
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [selectedBranch, selectedDate, selectedService, selectedTime]);
+
   useEffect(() => {
     if (selectedDate && selectedBranch && selectedService) {
       generateTimeSlots();
