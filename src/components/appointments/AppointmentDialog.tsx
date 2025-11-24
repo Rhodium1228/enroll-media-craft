@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { calculateEndTime, getAvailableSlots, TimeSlot } from "@/lib/appointmentUtils";
 import { Loader2 } from "lucide-react";
+import { StaffAvailabilityPreview } from "./StaffAvailabilityPreview";
 
 interface AppointmentDialogProps {
   open: boolean;
@@ -301,6 +302,16 @@ export const AppointmentDialog = ({
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedBranch && (
+              <div className="space-y-4">
+                <StaffAvailabilityPreview 
+                  branchId={selectedBranch}
+                  selectedDate={selectedDate}
+                  onDateSelect={setSelectedDate}
+                />
+              </div>
+            )}
 
             <div>
               <Label>Date *</Label>
