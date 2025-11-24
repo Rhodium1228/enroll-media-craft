@@ -124,20 +124,23 @@ export default function CustomerPortal() {
 
   return (
     <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">My Bookings</h1>
-          <p className="text-muted-foreground">{email}</p>
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold">My Bookings</h1>
+            <p className="text-white/90 mt-2">{email}</p>
+          </div>
+          <Button
+            variant="secondary"
+            className="bg-white text-primary hover:bg-white/90 w-full sm:w-auto"
+            onClick={() => {
+              setIsAuthenticated(false);
+              setEmail("");
+            }}
+          >
+            Sign Out
+          </Button>
         </div>
-        <Button
-          variant="outline"
-          onClick={() => {
-            setIsAuthenticated(false);
-            setEmail("");
-          }}
-        >
-          Sign Out
-        </Button>
       </div>
 
       <Tabs defaultValue="upcoming" className="w-full">
@@ -160,7 +163,7 @@ export default function CustomerPortal() {
             </Card>
           ) : (
             upcomingAppointments.map((appointment) => (
-              <Card key={appointment.id}>
+              <Card key={appointment.id} className="hover:shadow-xl transition-all hover:scale-[1.01] border-2 hover:border-primary/20">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>
@@ -227,7 +230,7 @@ export default function CustomerPortal() {
             </Card>
           ) : (
             pastAppointments.map((appointment) => (
-              <Card key={appointment.id}>
+              <Card key={appointment.id} className="hover:shadow-xl transition-all hover:scale-[1.01] border-2 hover:border-primary/20">
                 <CardHeader>
                   <div className="flex items-start justify-between">
                     <div>

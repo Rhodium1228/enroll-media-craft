@@ -64,15 +64,17 @@ const BranchDashboard = () => {
   return (
     <div className="container mx-auto p-4 sm:p-6 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Analytics Dashboard</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">Enterprise-level insights and performance metrics</p>
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white mb-6">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold">Analytics Dashboard</h1>
+            <p className="text-sm sm:text-base text-white/90 mt-2">Enterprise-level insights and performance metrics</p>
+          </div>
+          <Button onClick={() => navigate('/')} variant="secondary" className="bg-white text-primary hover:bg-white/90 w-full sm:w-auto">
+            <Plus className="mr-2 h-4 w-4" />
+            Create New Branch
+          </Button>
         </div>
-        <Button onClick={() => navigate('/')} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Create New Branch
-        </Button>
       </div>
 
       {/* KPI Cards */}
@@ -125,7 +127,9 @@ const BranchDashboard = () => {
 
       {/* Branch Comparison */}
       {analytics.branchData.length > 0 && (
-        <BranchComparisonTable branches={analytics.branchData} />
+        <div className="hover:shadow-xl transition-all">
+          <BranchComparisonTable branches={analytics.branchData} />
+        </div>
       )}
 
       {/* Three Column Layout */}

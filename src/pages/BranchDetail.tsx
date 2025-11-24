@@ -149,25 +149,25 @@ export default function BranchDetail() {
           </Button>
         </div>
 
-        <div className="mb-8">
-          <div className="flex flex-col sm:flex-row items-start gap-4 mb-4">
+        <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white mb-8">
+          <div className="flex flex-col sm:flex-row items-start gap-4">
             {branch.logo_url ? (
               <img
                 src={branch.logo_url}
                 alt={branch.name}
-                className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0"
+                className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg object-cover flex-shrink-0 border-2 border-white"
               />
             ) : (
-              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-muted-foreground" />
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0 border-2 border-white">
+                <Building2 className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
               </div>
             )}
             <div className="flex-1 min-w-0 w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-2">
-                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold text-foreground truncate">{branch.name}</h1>
-                <Badge className="w-fit">{branch.status}</Badge>
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 mb-3">
+                <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold truncate">{branch.name}</h1>
+                <Badge className="w-fit bg-white text-primary">{branch.status}</Badge>
               </div>
-              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm sm:text-base text-muted-foreground">
+              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-4 text-sm sm:text-base text-white/90">
                 <div className="flex items-center gap-2">
                   <MapPin className="h-4 w-4 flex-shrink-0" />
                   <span className="truncate">{branch.address}</span>

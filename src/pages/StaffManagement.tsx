@@ -254,17 +254,19 @@ export default function StaffManagement() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Staff Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Onboard and manage staff across all branches
-          </p>
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent rounded-lg p-8 text-white">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl sm:text-4xl font-bold">Staff Management</h1>
+            <p className="text-white/90 mt-2">
+              Onboard and manage staff across all branches
+            </p>
+          </div>
+          <Button onClick={() => { setSelectedStaff(null); setDialogOpen(true); }} variant="secondary" className="bg-white text-primary hover:bg-white/90 w-full sm:w-auto">
+            <UserPlus className="mr-2 h-4 w-4" />
+            Add Staff
+          </Button>
         </div>
-        <Button onClick={() => { setSelectedStaff(null); setDialogOpen(true); }}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          Add Staff
-        </Button>
       </div>
 
       {staff.length === 0 ? (
@@ -280,7 +282,7 @@ export default function StaffManagement() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {staff.map((staffMember) => (
-            <Card key={staffMember.id} className="hover:shadow-lg transition-shadow">
+            <Card key={staffMember.id} className="hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
