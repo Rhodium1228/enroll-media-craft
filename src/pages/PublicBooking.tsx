@@ -17,6 +17,7 @@ import { format, addDays } from "date-fns";
 import { CalendarIcon, Clock, DollarSign, Loader2, MapPin, User, Calendar as CalendarIconLarge, Scissors } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { z } from "zod";
+import { ServiceImageGallery } from "@/components/services/ServiceImageGallery";
 
 const customerSchema = z.object({
   name: z.string().trim().min(2, "Name must be at least 2 characters").max(100),
@@ -37,6 +38,7 @@ interface Service {
   cost: number;
   branch_id: string;
   image_url?: string;
+  gallery?: string[];
 }
 
 interface Staff {
@@ -164,7 +166,14 @@ export default function PublicBooking() {
         .eq("branch_id", selectedBranch);
 
       if (error) throw error;
-      setServices(data || []);
+      
+      // Cast gallery to string[] properly
+      const servicesWithGallery = data?.map(service => ({
+        ...service,
+        gallery: Array.isArray(service.gallery) ? service.gallery as string[] : []
+      })) || [];
+      
+      setServices(servicesWithGallery);
     } catch (error: any) {
       toast({
         title: "Error",
@@ -652,7 +661,13 @@ export default function PublicBooking() {
             {step === 2 && (
               <div className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {services.map((service) => (
+                  {services.map((service) => {
+                    const allImages = [
+                      ...(service.image_url ? [service.image_url] : []),
+                      ...(service.gallery || [])
+                    ];
+                    
+                    return (
                     <Card
                       key={service.id}
                       className={cn(
@@ -663,14 +678,12 @@ export default function PublicBooking() {
                       )}
                       onClick={() => setSelectedService(service.id)}
                     >
-                      {service.image_url && (
-                        <div className="w-full h-40 overflow-hidden bg-muted">
-                          <img
-                            src={service.image_url}
-                            alt={service.title}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
+                      {allImages.length > 0 && (
+                        <ServiceImageGallery 
+                          images={allImages}
+                          serviceName={service.title}
+                          className="h-40"
+                        />
                       )}
                       <CardContent className="pt-6">
                         <div className="space-y-4">
@@ -694,7 +707,8 @@ export default function PublicBooking() {
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                  );
+                  })}
                 </div>
 
                 <div className="flex gap-3">

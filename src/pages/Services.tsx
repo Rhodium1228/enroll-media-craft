@@ -14,6 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { ImageCropper } from "@/components/branch/ImageCropper";
 import { compressGalleryImage } from "@/lib/imageCompression";
+import { ServiceImageGallery } from "@/components/services/ServiceImageGallery";
 
 interface Branch {
   id: string;
@@ -42,6 +43,7 @@ interface Service {
   duration: number;
   cost: number;
   image_url?: string;
+  gallery?: string[];
   branch_id: string;
   branches?: {
     name: string;
@@ -76,6 +78,12 @@ export default function Services() {
   const [serviceImage, setServiceImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [cropImage, setCropImage] = useState<string | null>(null);
+  
+  // Gallery state (up to 5 additional images)
+  const [galleryImages, setGalleryImages] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const [cropGalleryImage, setCropGalleryImage] = useState<{ imageUrl: string; index: number } | null>(null);
+  const [existingGalleryUrls, setExistingGalleryUrls] = useState<string[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -192,6 +200,7 @@ export default function Services() {
 
         return {
           ...service,
+          gallery: Array.isArray(service.gallery) ? service.gallery as string[] : [],
           staff: serviceStaff,
           reviews: serviceReviews,
           averageRating,
@@ -224,7 +233,7 @@ export default function Services() {
     try {
       let imageUrl = editingService?.image_url || null;
 
-      // Upload image if a new one was selected
+      // Upload main image if a new one was selected
       if (serviceImage) {
         const fileName = `${Date.now()}-${serviceImage.name}`;
         const { data: uploadData, error: uploadError } = await supabase.storage
@@ -240,6 +249,28 @@ export default function Services() {
         imageUrl = publicUrl;
       }
 
+      // Upload gallery images
+      let galleryUrls = [...existingGalleryUrls]; // Keep existing URLs
+      if (galleryImages.length > 0) {
+        const uploadPromises = galleryImages.map(async (file, index) => {
+          const fileName = `gallery-${Date.now()}-${index}-${file.name}`;
+          const { error: uploadError } = await supabase.storage
+            .from("service-images")
+            .upload(fileName, file);
+
+          if (uploadError) throw uploadError;
+
+          const { data: { publicUrl } } = supabase.storage
+            .from("service-images")
+            .getPublicUrl(fileName);
+
+          return publicUrl;
+        });
+
+        const uploadedUrls = await Promise.all(uploadPromises);
+        galleryUrls = [...galleryUrls, ...uploadedUrls];
+      }
+
       const serviceData = {
         title: formData.title,
         service_type: formData.service_type || null,
@@ -247,6 +278,7 @@ export default function Services() {
         cost: parseFloat(formData.cost),
         branch_id: formData.branch_id,
         image_url: imageUrl,
+        gallery: galleryUrls,
       };
 
       if (editingService) {
@@ -285,6 +317,13 @@ export default function Services() {
       branch_id: service.branch_id,
     });
     setImagePreview(service.image_url || null);
+    
+    // Load existing gallery images
+    const gallery = service.gallery as any;
+    if (gallery && Array.isArray(gallery)) {
+      setExistingGalleryUrls(gallery);
+    }
+    
     setDialogOpen(true);
   };
 
@@ -317,6 +356,9 @@ export default function Services() {
     setEditingService(null);
     setServiceImage(null);
     setImagePreview(null);
+    setGalleryImages([]);
+    setGalleryPreviews([]);
+    setExistingGalleryUrls([]);
   };
 
   const handleImageSelect = async (file: File) => {
@@ -353,6 +395,57 @@ export default function Services() {
     } finally {
       setCropImage(null);
     }
+  };
+
+  const handleGalleryImageSelect = async (file: File) => {
+    const allowedTypes = ["image/jpeg", "image/png", "image/jpg", "image/webp"];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error("Gallery images must be JPG, PNG, or WEBP");
+      return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+      toast.error("Gallery images must be less than 4MB");
+      return;
+    }
+
+    const totalImages = existingGalleryUrls.length + galleryImages.length;
+    if (totalImages >= 5) {
+      toast.error("Maximum 5 gallery images allowed");
+      return;
+    }
+
+    const imageUrl = URL.createObjectURL(file);
+    setCropGalleryImage({ imageUrl, index: galleryImages.length });
+  };
+
+  const handleGalleryCropComplete = async (croppedBlob: Blob) => {
+    try {
+      const croppedFile = new File([croppedBlob], `gallery-${Date.now()}.jpg`, {
+        type: "image/jpeg",
+      });
+
+      const compressionResult = await compressGalleryImage(croppedFile);
+      const preview = URL.createObjectURL(compressionResult.file);
+
+      setGalleryImages([...galleryImages, compressionResult.file]);
+      setGalleryPreviews([...galleryPreviews, preview]);
+
+      toast.success("Gallery image added");
+    } catch (error) {
+      console.error("Error processing gallery image:", error);
+      toast.error("Failed to process gallery image");
+    } finally {
+      setCropGalleryImage(null);
+    }
+  };
+
+  const removeGalleryPreview = (index: number) => {
+    setGalleryImages(galleryImages.filter((_, i) => i !== index));
+    setGalleryPreviews(galleryPreviews.filter((_, i) => i !== index));
+  };
+
+  const removeExistingGalleryImage = (index: number) => {
+    setExistingGalleryUrls(existingGalleryUrls.filter((_, i) => i !== index));
   };
 
   const handleDialogChange = (open: boolean) => {
@@ -475,7 +568,7 @@ export default function Services() {
                   </div>
 
                   <div>
-                    <Label>Service Image (Optional)</Label>
+                    <Label>Main Service Image (Optional)</Label>
                     <div className="mt-2">
                       {imagePreview ? (
                         <div className="relative w-full h-48 rounded-lg overflow-hidden border-2 border-border">
@@ -502,7 +595,7 @@ export default function Services() {
                           <div className="flex flex-col items-center justify-center pt-5 pb-6">
                             <Upload className="w-10 h-10 mb-3 text-muted-foreground" />
                             <p className="mb-2 text-sm text-muted-foreground">
-                              <span className="font-semibold">Click to upload</span> service image
+                              <span className="font-semibold">Click to upload</span> main image
                             </p>
                             <p className="text-xs text-muted-foreground">
                               JPG, PNG or WEBP (MAX. 4MB)
@@ -520,6 +613,82 @@ export default function Services() {
                         </label>
                       )}
                     </div>
+                  </div>
+
+                  <div>
+                    <Label>Image Gallery (Optional, max 5)</Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Add additional images for customers to browse
+                    </p>
+                    
+                    {/* Existing gallery images */}
+                    {existingGalleryUrls.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        {existingGalleryUrls.map((url, index) => (
+                          <div key={`existing-${index}`} className="relative w-full h-24 rounded-lg overflow-hidden border-2 border-border">
+                            <img
+                              src={url}
+                              alt={`Gallery ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6"
+                              onClick={() => removeExistingGalleryImage(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* New gallery image previews */}
+                    {galleryPreviews.length > 0 && (
+                      <div className="grid grid-cols-3 gap-2 mb-2">
+                        {galleryPreviews.map((preview, index) => (
+                          <div key={`preview-${index}`} className="relative w-full h-24 rounded-lg overflow-hidden border-2 border-primary">
+                            <img
+                              src={preview}
+                              alt={`New gallery ${index + 1}`}
+                              className="w-full h-full object-cover"
+                            />
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="icon"
+                              className="absolute top-1 right-1 h-6 w-6"
+                              onClick={() => removeGalleryPreview(index)}
+                            >
+                              <X className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Upload button */}
+                    {(existingGalleryUrls.length + galleryImages.length) < 5 && (
+                      <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed rounded-lg cursor-pointer hover:bg-muted/50 transition-colors">
+                        <div className="flex flex-col items-center justify-center">
+                          <Upload className="w-6 h-6 mb-1 text-muted-foreground" />
+                          <p className="text-xs text-muted-foreground">
+                            Add gallery image
+                          </p>
+                        </div>
+                        <input
+                          type="file"
+                          className="hidden"
+                          accept="image/jpeg,image/png,image/jpg,image/webp"
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleGalleryImageSelect(file);
+                          }}
+                        />
+                      </label>
+                    )}
                   </div>
 
                   <div className="flex justify-end gap-2">
@@ -556,16 +725,19 @@ export default function Services() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {services.map((service) => (
+          {services.map((service) => {
+            const allImages = [
+              ...(service.image_url ? [service.image_url] : []),
+              ...(service.gallery || [])
+            ];
+            
+            return (
             <Card key={service.id} className="hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20 overflow-hidden">
-              {service.image_url && (
-                <div className="w-full h-48 overflow-hidden bg-muted">
-                  <img
-                    src={service.image_url}
-                    alt={service.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
+              {allImages.length > 0 && (
+                <ServiceImageGallery 
+                  images={allImages}
+                  serviceName={service.title}
+                />
               )}
               <CardHeader>
                 <div className="flex items-start justify-between">
@@ -738,7 +910,8 @@ export default function Services() {
                 </div>
               </CardContent>
             </Card>
-          ))}
+          );
+          })}
         </div>
       )}
       </div>
@@ -750,6 +923,16 @@ export default function Services() {
           onCropComplete={handleCropComplete}
           onCancel={() => setCropImage(null)}
           title="Crop Service Image"
+        />
+      )}
+
+      {cropGalleryImage && (
+        <ImageCropper
+          image={cropGalleryImage.imageUrl}
+          aspectRatio={4 / 3}
+          onCropComplete={handleGalleryCropComplete}
+          onCancel={() => setCropGalleryImage(null)}
+          title="Crop Gallery Image"
         />
       )}
     </div>

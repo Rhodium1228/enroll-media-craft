@@ -248,6 +248,7 @@ export type Database = {
           cost: number
           created_at: string
           duration: number
+          gallery: Json | null
           id: string
           image_url: string | null
           service_type: string | null
@@ -259,6 +260,7 @@ export type Database = {
           cost: number
           created_at?: string
           duration: number
+          gallery?: Json | null
           id?: string
           image_url?: string | null
           service_type?: string | null
@@ -270,6 +272,7 @@ export type Database = {
           cost?: number
           created_at?: string
           duration?: number
+          gallery?: Json | null
           id?: string
           image_url?: string | null
           service_type?: string | null
