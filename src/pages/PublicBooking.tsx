@@ -92,6 +92,30 @@ export default function PublicBooking() {
   // Trigger for forcing time slot refresh
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
+  // Real-time subscription for branch changes
+  useEffect(() => {
+    const channel = supabase
+      .channel('public-branches-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'branches',
+          filter: 'status=eq.active'
+        },
+        () => {
+          // Refresh branches list when any branch changes
+          fetchBranches();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, []);
+
   // Real-time subscription for appointment changes
   useEffect(() => {
     if (!selectedBranch || !selectedDate) return;
