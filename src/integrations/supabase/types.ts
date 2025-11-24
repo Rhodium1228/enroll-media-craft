@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       appointments: {
         Row: {
+          booking_reference: string | null
           branch_id: string
           created_at: string
           created_by: string
@@ -33,6 +34,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          booking_reference?: string | null
           branch_id: string
           created_at?: string
           created_by: string
@@ -50,6 +52,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          booking_reference?: string | null
           branch_id?: string
           created_at?: string
           created_by?: string
@@ -504,7 +507,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      generate_booking_reference: { Args: never; Returns: string }
     }
     Enums: {
       leave_status: "pending" | "approved" | "rejected"
