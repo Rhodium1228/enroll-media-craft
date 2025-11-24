@@ -24,6 +24,9 @@ interface BasicDetailsStepProps {
     phone: string;
     email: string;
     appointment_padding: number;
+    latitude?: number;
+    longitude?: number;
+    geofence_radius: number;
     open_hours: Record<string, { open: string; close: string }>;
   };
   updateData: (data: any) => void;
@@ -194,25 +197,6 @@ export const BasicDetailsStep = ({ data, updateData }: BasicDetailsStepProps) =>
 
         <div className="grid md:grid-cols-2 gap-4">
           <div className="space-y-2">
-            <Label htmlFor="timezone">Timezone</Label>
-            <Select
-              value={data.timezone}
-              onValueChange={(value) => updateData({ timezone: value })}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Select timezone" />
-              </SelectTrigger>
-              <SelectContent>
-                {timezones.map((tz) => (
-                  <SelectItem key={tz} value={tz}>
-                    {tz}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
             <Label htmlFor="padding">Appointment Padding (minutes)</Label>
             <Input
               id="padding"
@@ -225,6 +209,61 @@ export const BasicDetailsStep = ({ data, updateData }: BasicDetailsStepProps) =>
               }
             />
           </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="geofence">Geofence Radius (meters)</Label>
+            <Input
+              id="geofence"
+              type="number"
+              min="10"
+              max="1000"
+              placeholder="100"
+              value={data.geofence_radius}
+              onChange={(e) =>
+                updateData({ geofence_radius: parseInt(e.target.value) || 100 })
+              }
+            />
+            <p className="text-xs text-muted-foreground">
+              Staff must be within this distance to clock in/out
+            </p>
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Label>GPS Coordinates (for geofencing)</Label>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="latitude">Latitude</Label>
+              <Input
+                id="latitude"
+                type="number"
+                step="0.000001"
+                placeholder="40.712776"
+                value={data.latitude || ""}
+                onChange={(e) =>
+                  updateData({ latitude: parseFloat(e.target.value) || undefined })
+                }
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="longitude">Longitude</Label>
+              <Input
+                id="longitude"
+                type="number"
+                step="0.000001"
+                placeholder="-74.005974"
+                value={data.longitude || ""}
+                onChange={(e) =>
+                  updateData({ longitude: parseFloat(e.target.value) || undefined })
+                }
+              />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Set branch GPS coordinates to enable geofencing for staff clock in/out.
+            You can get coordinates from Google Maps by right-clicking a location.
+          </p>
         </div>
 
         <OpeningHoursEditor

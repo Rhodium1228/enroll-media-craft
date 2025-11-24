@@ -143,9 +143,12 @@ export type Database = {
           created_by: string
           email: string
           gallery: Json | null
+          geofence_radius: number | null
           hero_image_url: string | null
           id: string
+          latitude: number | null
           logo_url: string | null
+          longitude: number | null
           name: string
           open_hours: Json
           phone: string
@@ -161,9 +164,12 @@ export type Database = {
           created_by: string
           email: string
           gallery?: Json | null
+          geofence_radius?: number | null
           hero_image_url?: string | null
           id?: string
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name: string
           open_hours?: Json
           phone: string
@@ -179,9 +185,12 @@ export type Database = {
           created_by?: string
           email?: string
           gallery?: Json | null
+          geofence_radius?: number | null
           hero_image_url?: string | null
           id?: string
+          latitude?: number | null
           logo_url?: string | null
+          longitude?: number | null
           name?: string
           open_hours?: Json
           phone?: string

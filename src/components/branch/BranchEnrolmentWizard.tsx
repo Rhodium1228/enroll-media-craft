@@ -31,6 +31,9 @@ interface BranchData {
   email: string;
   open_hours: Record<string, { open: string; close: string }>;
   appointment_padding: number;
+  latitude?: number;
+  longitude?: number;
+  geofence_radius: number;
   logo_file?: File;
   hero_file?: File;
   gallery_files: File[];
@@ -64,6 +67,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
     email: "",
     open_hours: {},
     appointment_padding: 15,
+    geofence_radius: 100,
     gallery_files: [],
     compliance_files: [],
     services: [],
@@ -323,6 +327,9 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
           email: branchData.email,
           open_hours: branchData.open_hours,
           appointment_padding: branchData.appointment_padding,
+          latitude: branchData.latitude,
+          longitude: branchData.longitude,
+          geofence_radius: branchData.geofence_radius,
           logo_url: logoUrl,
           hero_image_url: heroUrl,
           gallery: galleryUrls,

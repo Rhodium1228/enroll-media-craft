@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, CalendarPlus, UserCircle, Clock, LogOut } from "lucide-react";
+import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, CalendarPlus, UserCircle, Clock, MapPin, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ const menuItems = [
   { title: "Services", url: "/services", icon: Package },
   { title: "Staff", url: "/staff", icon: Users },
   { title: "Staff Calendar", url: "/calendar", icon: Calendar },
+  { title: "Clock In/Out", url: "/clock-in-out", icon: MapPin },
   { title: "Clock Records", url: "/clock-records", icon: Clock },
   { title: "Appointments", url: "/appointments", icon: ClipboardList },
   { title: "Public Booking", url: "/book", icon: CalendarPlus },
