@@ -36,6 +36,7 @@ interface Service {
   duration: number;
   cost: number;
   branch_id: string;
+  image_url?: string;
 }
 
 interface Staff {
@@ -655,13 +656,22 @@ export default function PublicBooking() {
                     <Card
                       key={service.id}
                       className={cn(
-                        "cursor-pointer transition-all hover:shadow-md border-2",
+                        "cursor-pointer transition-all hover:shadow-md border-2 overflow-hidden",
                         selectedService === service.id 
                           ? "border-primary bg-primary/5" 
                           : "border-border hover:border-primary/50"
                       )}
                       onClick={() => setSelectedService(service.id)}
                     >
+                      {service.image_url && (
+                        <div className="w-full h-40 overflow-hidden bg-muted">
+                          <img
+                            src={service.image_url}
+                            alt={service.title}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      )}
                       <CardContent className="pt-6">
                         <div className="space-y-4">
                           <div className="flex items-start justify-between">
