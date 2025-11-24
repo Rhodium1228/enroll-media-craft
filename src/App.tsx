@@ -20,6 +20,7 @@ import SubmitReview from "./pages/SubmitReview";
 import CustomerPortal from "./pages/CustomerPortal";
 import StaffClockRecords from "./pages/StaffClockRecords";
 import StaffClockInOut from "./pages/StaffClockInOut";
+import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -132,6 +133,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <StaffClockInOut />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <Notifications />
                 </AppLayout>
               </ProtectedRoute>
             }
