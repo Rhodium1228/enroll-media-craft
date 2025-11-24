@@ -124,20 +124,29 @@ export default function Branches() {
   }
 
   return (
-    <div className="container mx-auto p-4 sm:p-6 space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold">Branch Management</h1>
-          <p className="text-sm sm:text-base text-muted-foreground">
-            Manage all your branch locations
-          </p>
+    <div className="min-h-screen bg-background">
+      {/* Gradient Header */}
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="text-white">
+              <h1 className="text-3xl sm:text-4xl font-bold mb-2">Branch Management</h1>
+              <p className="text-white/90">
+                Manage all your branch locations
+              </p>
+            </div>
+            <Button 
+              onClick={() => navigate("/")} 
+              className="w-full sm:w-auto bg-white text-primary hover:bg-white/90"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Create New Branch
+            </Button>
+          </div>
         </div>
-        <Button onClick={() => navigate("/")} className="w-full sm:w-auto">
-          <Plus className="mr-2 h-4 w-4" />
-          Create New Branch
-        </Button>
       </div>
+
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
 
       {/* Branches Grid */}
       {branches.length === 0 ? (
@@ -157,7 +166,7 @@ export default function Branches() {
       ) : (
         <div className="grid gap-4 sm:gap-6 grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {branches.map((branch) => (
-            <Card key={branch.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            <Card key={branch.id} className="overflow-hidden hover:shadow-xl transition-all hover:scale-[1.02] border-2 hover:border-primary/20">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
@@ -222,6 +231,8 @@ export default function Branches() {
           ))}
         </div>
       )}
+
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>

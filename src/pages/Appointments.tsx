@@ -194,26 +194,39 @@ export default function Appointments() {
   };
 
   return (
-    <div className="min-h-screen bg-background p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/dashboard")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Appointments</h1>
-              <p className="text-muted-foreground">
-                Manage appointments and bookings
-              </p>
+    <div className="min-h-screen bg-background">
+      {/* Gradient Header */}
+      <div className="bg-gradient-to-r from-primary via-primary/90 to-accent py-12 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-4">
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                onClick={() => navigate("/dashboard")}
+                className="text-white hover:bg-white/20"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div className="text-white">
+                <h1 className="text-3xl sm:text-4xl font-bold mb-2">Appointments</h1>
+                <p className="text-white/90">
+                  Manage appointments and bookings
+                </p>
+              </div>
             </div>
+            <Button 
+              onClick={() => setDialogOpen(true)}
+              className="bg-white text-primary hover:bg-white/90"
+            >
+              <CalendarPlus className="h-4 w-4 mr-2" />
+              New Appointment
+            </Button>
           </div>
-          <Button onClick={() => setDialogOpen(true)}>
-            <CalendarPlus className="h-4 w-4 mr-2" />
-            New Appointment
-          </Button>
         </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-6 space-y-6">
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-4">
