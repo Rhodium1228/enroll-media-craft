@@ -10,8 +10,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
-import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight, X, Filter } from "lucide-react";
+import { ArrowLeft, CalendarPlus, ChevronLeft, ChevronRight, X, Filter, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { format, addDays, subDays, startOfMonth, endOfMonth, addWeeks, subWeeks } from "date-fns";
@@ -45,13 +46,15 @@ export default function Appointments() {
   const [selectedStaff, setSelectedStaff] = useState<string>("all");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [appointmentToDelete, setAppointmentToDelete] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [recentlyUpdated, setRecentlyUpdated] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchBranches();
     fetchStaff();
     fetchAppointments();
 
-    // Real-time subscription
+    // Real-time subscription with highlighting
     const channel = supabase
       .channel('appointments-changes')
       .on(
@@ -61,7 +64,24 @@ export default function Appointments() {
           schema: 'public',
           table: 'appointments',
         },
-        () => {
+        (payload) => {
+          console.log('Appointment change:', payload);
+          
+          // Add to recently updated set for highlighting
+          if (payload.new && typeof payload.new === 'object' && 'id' in payload.new) {
+            const appointmentId = payload.new.id as string;
+            setRecentlyUpdated((prev) => new Set(prev).add(appointmentId));
+            
+            // Remove from highlight after 5 seconds
+            setTimeout(() => {
+              setRecentlyUpdated((prev) => {
+                const newSet = new Set(prev);
+                newSet.delete(appointmentId);
+                return newSet;
+              });
+            }, 5000);
+          }
+          
           fetchAppointments();
         }
       )
@@ -162,7 +182,22 @@ export default function Appointments() {
       return;
     }
 
-    setAppointments(data as AppointmentWithDetails[]);
+    // Apply search filter
+    let filteredData = data as AppointmentWithDetails[];
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase();
+      filteredData = filteredData.filter((apt) => {
+        return (
+          apt.customer_name.toLowerCase().includes(query) ||
+          apt.booking_reference?.toLowerCase().includes(query) ||
+          apt.customer_email?.toLowerCase().includes(query) ||
+          apt.customer_phone?.includes(query) ||
+          format(new Date(apt.date), "yyyy-MM-dd").includes(query)
+        );
+      });
+    }
+
+    setAppointments(filteredData);
   };
 
   const handlePrevious = () => {
@@ -258,27 +293,28 @@ export default function Appointments() {
 
       <div className="max-w-7xl mx-auto p-6 space-y-6">
 
-        {/* Filters */}
-        <div className="flex flex-wrap items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={handlePrevious}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button variant="outline" onClick={handleToday}>
-              Today
-            </Button>
-            <Button variant="outline" size="icon" onClick={handleNext}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+        {/* Filters and Search */}
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="icon" onClick={handlePrevious}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" onClick={handleToday}>
+                Today
+              </Button>
+              <Button variant="outline" size="icon" onClick={handleNext}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
 
-          <div className="font-semibold">
-            {activeView === "day" && format(selectedDate, "EEEE, MMMM d, yyyy")}
-            {activeView === "week" && `Week of ${format(selectedDate, "MMM d, yyyy")}`}
-            {activeView === "month" && format(selectedDate, "MMMM yyyy")}
-          </div>
+            <div className="font-semibold">
+              {activeView === "day" && format(selectedDate, "EEEE, MMMM d, yyyy")}
+              {activeView === "week" && `Week of ${format(selectedDate, "MMM d, yyyy")}`}
+              {activeView === "month" && format(selectedDate, "MMMM yyyy")}
+            </div>
 
-          <div className="flex items-center gap-2 ml-auto flex-wrap">
+            <div className="flex items-center gap-2 ml-auto flex-wrap">
             <Select value={selectedBranch} onValueChange={setSelectedBranch}>
               <SelectTrigger className={`w-48 ${selectedBranch !== "all" ? "border-primary" : ""}`}>
                 <SelectValue placeholder="All branches" />
@@ -322,11 +358,33 @@ export default function Appointments() {
               </Button>
             )}
 
-            {(selectedBranch !== "all" || selectedStaff !== "all") && (
-              <Badge variant="secondary" className="gap-1">
-                <Filter className="h-3 w-3" />
-                {[selectedBranch !== "all" && "Branch", selectedStaff !== "all" && "Staff"].filter(Boolean).join(", ")}
-              </Badge>
+              {(selectedBranch !== "all" || selectedStaff !== "all") && (
+                <Badge variant="secondary" className="gap-1">
+                  <Filter className="h-3 w-3" />
+                  {[selectedBranch !== "all" && "Branch", selectedStaff !== "all" && "Staff"].filter(Boolean).join(", ")}
+                </Badge>
+              )}
+            </div>
+          </div>
+
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Search by customer name, booking reference, email, phone, or date..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setSearchQuery("")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
             )}
           </div>
         </div>
@@ -348,6 +406,7 @@ export default function Appointments() {
                 date={selectedDate}
                 onAppointmentClick={(apt) => console.log("View appointment", apt)}
                 onStatusUpdate={fetchAppointments}
+                recentlyUpdated={recentlyUpdated}
               />
             )}
           </TabsContent>
@@ -397,6 +456,7 @@ export default function Appointments() {
                             setDeleteDialogOpen(true);
                           }}
                           onUpdateStatus={handleUpdateStatus}
+                          isRecentlyUpdated={recentlyUpdated.has(appointment.id)}
                         />
                       ))}
                     {appointments.filter((apt) => apt.date === format(selectedDate, "yyyy-MM-dd")).length === 0 && (

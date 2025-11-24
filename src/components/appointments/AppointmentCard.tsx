@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Clock, User, Phone, Mail, Edit, Trash2, CheckCircle2 } from "lucide-react";
+import { Clock, User, Phone, Mail, Edit, Trash2, CheckCircle2, Globe, Building2 } from "lucide-react";
 import { AppointmentWithDetails, formatTimeRange, getAppointmentStatusColor } from "@/lib/appointmentUtils";
 import {
   DropdownMenu,
@@ -16,6 +16,7 @@ interface AppointmentCardProps {
   onEdit?: (appointment: AppointmentWithDetails) => void;
   onDelete?: (appointmentId: string) => void;
   onUpdateStatus?: (appointmentId: string, status: AppointmentWithDetails['status']) => void;
+  isRecentlyUpdated?: boolean;
 }
 
 export const AppointmentCard = ({
@@ -23,6 +24,7 @@ export const AppointmentCard = ({
   onEdit,
   onDelete,
   onUpdateStatus,
+  isRecentlyUpdated = false,
 }: AppointmentCardProps) => {
   const statusLabels = {
     scheduled: 'Scheduled',
@@ -32,8 +34,12 @@ export const AppointmentCard = ({
     no_show: 'No Show',
   };
 
+  const isPublicBooking = !!appointment.booking_reference;
+
   return (
-    <Card className={`${getAppointmentStatusColor(appointment.status)} border-2`}>
+    <Card className={`${getAppointmentStatusColor(appointment.status)} border-2 ${
+      isRecentlyUpdated ? 'ring-2 ring-primary ring-offset-2 animate-pulse' : ''
+    }`}>
       <CardContent className="p-4">
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -48,12 +54,29 @@ export const AppointmentCard = ({
             )}
             
             <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 <h4 className="font-semibold text-sm truncate">{appointment.customer_name}</h4>
                 <Badge variant="outline" className="text-xs">
                   {statusLabels[appointment.status]}
                 </Badge>
+                {isPublicBooking ? (
+                  <Badge variant="secondary" className="text-xs gap-1 bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100">
+                    <Globe className="h-3 w-3" />
+                    Public
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs gap-1 bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100">
+                    <Building2 className="h-3 w-3" />
+                    Internal
+                  </Badge>
+                )}
               </div>
+              
+              {appointment.booking_reference && (
+                <div className="text-xs text-muted-foreground mb-1">
+                  Ref: <span className="font-mono font-semibold">{appointment.booking_reference}</span>
+                </div>
+              )}
               
               {appointment.service && (
                 <p className="text-sm text-muted-foreground mb-1">
