@@ -464,10 +464,16 @@ export default function StaffEnrollmentDialog({
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="suspended">Suspended</SelectItem>
                   <SelectItem value="inactive">Inactive</SelectItem>
                   <SelectItem value="on_leave">On Leave</SelectItem>
                 </SelectContent>
               </Select>
+              {formData.status === "suspended" && (
+                <p className="text-sm text-destructive">
+                  Suspended staff cannot be assigned to appointments or schedules
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
