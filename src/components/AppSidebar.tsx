@@ -1,7 +1,9 @@
+import { useState, useEffect } from "react";
 import { LayoutDashboard, Building2, Users, ClipboardList, Calendar, Package, CalendarPlus, UserCircle, LogOut } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import logo from "@/assets/bms-pro-logo.png";
@@ -30,11 +32,90 @@ const menuItems = [
   { title: "My Bookings", url: "/my-bookings", icon: UserCircle },
 ];
 
+interface MenuCounts {
+  appointments: number;
+  staff: number;
+  branches: number;
+}
+
 export function AppSidebar() {
   const { open } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const currentPath = location.pathname;
+  const [counts, setCounts] = useState<MenuCounts>({
+    appointments: 0,
+    staff: 0,
+    branches: 0,
+  });
+
+  useEffect(() => {
+    fetchCounts();
+    
+    // Set up real-time subscriptions
+    const appointmentsChannel = supabase
+      .channel('sidebar-appointments')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'appointments' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
+    const staffChannel = supabase
+      .channel('sidebar-staff')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'staff' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
+    const branchesChannel = supabase
+      .channel('sidebar-branches')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'branches' }, () => {
+        fetchCounts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentsChannel);
+      supabase.removeChannel(staffChannel);
+      supabase.removeChannel(branchesChannel);
+    };
+  }, []);
+
+  const fetchCounts = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Fetch pending appointments count
+      const { count: appointmentsCount } = await supabase
+        .from('appointments')
+        .select('*', { count: 'exact', head: true })
+        .eq('status', 'scheduled')
+        .gte('date', new Date().toISOString().split('T')[0]);
+
+      // Fetch active staff count
+      const { count: staffCount } = await supabase
+        .from('staff')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', user.id)
+        .eq('status', 'active');
+
+      // Fetch active branches count
+      const { count: branchesCount } = await supabase
+        .from('branches')
+        .select('*', { count: 'exact', head: true })
+        .eq('created_by', user.id)
+        .in('status', ['active', 'pending']);
+
+      setCounts({
+        appointments: appointmentsCount || 0,
+        staff: staffCount || 0,
+        branches: branchesCount || 0,
+      });
+    } catch (error) {
+      console.error('Error fetching sidebar counts:', error);
+    }
+  };
 
   const isActive = (path: string) => {
     if (path === "/dashboard") {
@@ -47,6 +128,31 @@ export function AppSidebar() {
     await supabase.auth.signOut();
     toast.success("Signed out successfully");
     navigate("/");
+  };
+
+  const getBadgeForItem = (url: string) => {
+    if (url === "/appointments" && counts.appointments > 0) {
+      return (
+        <Badge className="ml-auto bg-primary text-primary-foreground hover:bg-primary/90 min-w-[1.5rem] h-5 flex items-center justify-center px-1.5">
+          {counts.appointments > 99 ? '99+' : counts.appointments}
+        </Badge>
+      );
+    }
+    if (url === "/staff" && counts.staff > 0) {
+      return (
+        <Badge variant="secondary" className="ml-auto min-w-[1.5rem] h-5 flex items-center justify-center px-1.5">
+          {counts.staff}
+        </Badge>
+      );
+    }
+    if (url === "/branches" && counts.branches > 0) {
+      return (
+        <Badge variant="outline" className="ml-auto min-w-[1.5rem] h-5 flex items-center justify-center px-1.5">
+          {counts.branches}
+        </Badge>
+      );
+    }
+    return null;
   };
 
   return (
@@ -71,11 +177,16 @@ export function AppSidebar() {
                   <SidebarMenuButton asChild isActive={isActive(item.url)}>
                     <NavLink
                       to={item.url}
-                      className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-primary/10 hover:scale-[1.02]"
+                      className="flex items-center gap-3 rounded-lg px-3 py-2 transition-all hover:bg-primary/10 hover:scale-[1.02] w-full"
                       activeClassName="bg-gradient-to-r from-primary/20 to-accent/20 text-primary font-semibold border-l-4 border-primary shadow-sm"
                     >
                       <item.icon className="h-5 w-5 flex-shrink-0" />
-                      {open && <span className="truncate">{item.title}</span>}
+                      {open && (
+                        <>
+                          <span className="truncate flex-1">{item.title}</span>
+                          {getBadgeForItem(item.url)}
+                        </>
+                      )}
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
