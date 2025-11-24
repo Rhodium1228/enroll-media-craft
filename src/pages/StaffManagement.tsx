@@ -7,7 +7,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UserPlus, User, Mail, Phone, Building2, Edit2, Plus } from "lucide-react";
+import { UserPlus, User, Mail, Phone, Building2, Edit2, Plus, Calendar as CalendarIcon } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 import StaffEnrollmentDialog from "@/components/staff/StaffEnrollmentDialog";
@@ -342,24 +342,35 @@ export default function StaffManagement() {
                     </div>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                <div className="space-y-2">
                   <Button
                     variant="outline"
                     size="sm"
-                    className="flex-1"
-                    onClick={() => handleEdit(staffMember)}
+                    className="w-full"
+                    onClick={() => navigate(`/staff/${staffMember.id}/calendar`)}
                   >
-                    <Edit2 className="h-4 w-4 mr-2" />
-                    Edit
+                    <CalendarIcon className="h-4 w-4 mr-2" />
+                    View Calendar
                   </Button>
-                  <Button
-                    size="sm"
-                    className="flex-1"
-                    onClick={() => handleAssignToBranch(staffMember)}
-                  >
-                    <Plus className="h-4 w-4 mr-2" />
-                    Assign to Branch
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleEdit(staffMember)}
+                    >
+                      <Edit2 className="h-4 w-4 mr-2" />
+                      Edit
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="flex-1"
+                      onClick={() => handleAssignToBranch(staffMember)}
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Assign
+                    </Button>
+                  </div>
                 </div>
               </CardContent>
             </Card>

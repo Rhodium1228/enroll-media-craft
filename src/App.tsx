@@ -12,6 +12,7 @@ import Branches from "./pages/Branches";
 import Services from "./pages/Services";
 import StaffManagement from "./pages/StaffManagement";
 import StaffCalendar from "./pages/StaffCalendar";
+import StaffCalendarPage from "./pages/StaffCalendarPage";
 import Appointments from "./pages/Appointments";
 import NotFound from "./pages/NotFound";
 
@@ -71,6 +72,16 @@ const App = () => (
               <ProtectedRoute>
                 <AppLayout>
                   <StaffManagement />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/staff/:staffId/calendar"
+            element={
+              <ProtectedRoute>
+                <AppLayout>
+                  <StaffCalendarPage />
                 </AppLayout>
               </ProtectedRoute>
             }
