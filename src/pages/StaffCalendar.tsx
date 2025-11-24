@@ -257,7 +257,7 @@ export default function StaffCalendar() {
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
-        <Button variant="ghost" onClick={() => navigate("/dashboard")} className="mb-6">
+        <Button variant="ghost" onClick={() => navigate("/")} className="mb-6">
           <ArrowLeft className="mr-2 h-4 w-4" />
           Back to Dashboard
         </Button>

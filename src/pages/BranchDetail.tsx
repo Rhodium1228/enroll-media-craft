@@ -117,7 +117,7 @@ export default function BranchDetail() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <Button onClick={() => navigate("/dashboard")} className="w-full">
+            <Button onClick={() => navigate("/")} className="w-full">
               <ArrowLeft className="mr-2 h-4 w-4" />
               Back to Dashboard
             </Button>
@@ -133,7 +133,7 @@ export default function BranchDetail() {
         <div className="flex flex-col sm:flex-row gap-3 sm:justify-between sm:items-center mb-6">
           <Button
             variant="ghost"
-            onClick={() => navigate("/dashboard")}
+            onClick={() => navigate("/")}
             className="w-full sm:w-auto"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
