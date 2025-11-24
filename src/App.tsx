@@ -4,8 +4,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AppLayout } from "@/components/AppLayout";
-import { ProtectedRoute } from "@/components/ProtectedRoute";
-import Index from "./pages/Index";
 import BranchDashboard from "./pages/BranchDashboard";
 import BranchDetail from "./pages/BranchDetail";
 import Branches from "./pages/Branches";
@@ -32,121 +30,21 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Routes>
-          <Route path="/" element={<Index />} />
-        <Route path="/book" element={<PublicBooking />} />
-        <Route path="/manage-booking" element={<ManageBooking />} />
-        <Route path="/submit-review" element={<SubmitReview />} />
-        <Route path="/my-bookings" element={<CustomerPortal />} />
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <BranchDashboard />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/branch/:branchId"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <BranchDetail />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/branches"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Branches />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/services"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Services />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/staff"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <StaffManagement />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/staff/:staffId/calendar"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <StaffCalendarPage />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/calendar"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <StaffCalendar />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/appointments"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Appointments />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clock-records"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <StaffClockRecords />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/clock-in-out"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <StaffClockInOut />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/notifications"
-            element={
-              <ProtectedRoute>
-                <AppLayout>
-                  <Notifications />
-                </AppLayout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/" element={<AppLayout><BranchDashboard /></AppLayout>} />
+          <Route path="/book" element={<PublicBooking />} />
+          <Route path="/manage-booking" element={<ManageBooking />} />
+          <Route path="/submit-review" element={<SubmitReview />} />
+          <Route path="/my-bookings" element={<CustomerPortal />} />
+          <Route path="/branch/:branchId" element={<AppLayout><BranchDetail /></AppLayout>} />
+          <Route path="/branches" element={<AppLayout><Branches /></AppLayout>} />
+          <Route path="/services" element={<AppLayout><Services /></AppLayout>} />
+          <Route path="/staff" element={<AppLayout><StaffManagement /></AppLayout>} />
+          <Route path="/staff/:staffId/calendar" element={<AppLayout><StaffCalendarPage /></AppLayout>} />
+          <Route path="/calendar" element={<AppLayout><StaffCalendar /></AppLayout>} />
+          <Route path="/appointments" element={<AppLayout><Appointments /></AppLayout>} />
+          <Route path="/clock-records" element={<AppLayout><StaffClockRecords /></AppLayout>} />
+          <Route path="/clock-in-out" element={<AppLayout><StaffClockInOut /></AppLayout>} />
+          <Route path="/notifications" element={<AppLayout><Notifications /></AppLayout>} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
