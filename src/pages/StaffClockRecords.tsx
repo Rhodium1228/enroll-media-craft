@@ -164,7 +164,105 @@ export default function StaffClockRecords() {
             <CardTitle>Clock Records</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="overflow-x-auto">
+            {/* Mobile Card View */}
+            <div className="md:hidden space-y-4">
+              {records.length === 0 ? (
+                <div className="text-center text-muted-foreground py-8">
+                  No clock records found
+                </div>
+              ) : (
+                records.map((record) => (
+                  <Card key={record.id} className="border-2">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <User className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium truncate">
+                              {record.staff.first_name} {record.staff.last_name}
+                            </span>
+                          </div>
+                          <Badge variant={record.status === 'clocked_in' ? 'default' : 'secondary'}>
+                            {record.status === 'clocked_in' ? 'Active' : 'Completed'}
+                          </Badge>
+                        </div>
+
+                        <div className="flex items-center gap-2 text-sm">
+                          <Building2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <span className="truncate">{record.branches.name}</span>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-3 pt-3 border-t">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Clock In</p>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-sm">
+                                {format(new Date(record.clock_in_time), 'HH:mm')}
+                              </span>
+                              <span className="text-xs text-muted-foreground">
+                                {format(new Date(record.clock_in_time), 'dd/MM/yyyy')}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Clock Out</p>
+                            {record.clock_out_time ? (
+                              <div className="flex flex-col">
+                                <span className="font-medium text-sm">
+                                  {format(new Date(record.clock_out_time), 'HH:mm')}
+                                </span>
+                                <span className="text-xs text-muted-foreground">
+                                  {format(new Date(record.clock_out_time), 'dd/MM/yyyy')}
+                                </span>
+                              </div>
+                            ) : (
+                              <span className="text-muted-foreground text-sm">-</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between pt-3 border-t">
+                          <div>
+                            <p className="text-xs text-muted-foreground mb-1">Duration</p>
+                            <p className="font-medium text-sm">
+                              {calculateDuration(record.clock_in_time, record.clock_out_time)}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2">
+                            {record.clock_in_latitude && record.clock_in_longitude && (
+                              <button
+                                onClick={() => openMapLocation(record.clock_in_latitude, record.clock_in_longitude)}
+                                className="p-2 hover:bg-accent rounded-lg transition-colors border"
+                                title="Clock In Location"
+                              >
+                                <MapPin className="h-4 w-4 text-green-600" />
+                              </button>
+                            )}
+                            {record.clock_out_latitude && record.clock_out_longitude && (
+                              <button
+                                onClick={() => openMapLocation(record.clock_out_latitude, record.clock_out_longitude)}
+                                className="p-2 hover:bg-accent rounded-lg transition-colors border"
+                                title="Clock Out Location"
+                              >
+                                <MapPin className="h-4 w-4 text-red-600" />
+                              </button>
+                            )}
+                            {!record.clock_in_latitude && !record.clock_out_latitude && (
+                              <span className="text-xs text-muted-foreground py-2">No GPS</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden md:block overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
