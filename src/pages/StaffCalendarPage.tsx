@@ -52,6 +52,7 @@ export default function StaffCalendarPage() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [assignments, setAssignments] = useState<DateAssignment[]>([]);
   const [appointments, setAppointments] = useState<AppointmentWithDetails[]>([]);
+  const [allAppointments, setAllAppointments] = useState<AppointmentWithDetails[]>([]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,6 +61,7 @@ export default function StaffCalendarPage() {
       fetchStaffData();
       fetchAssignments();
       fetchLeaveRequests();
+      fetchAllAppointments();
     }
 
     // Real-time subscription for appointments changes
@@ -76,6 +78,7 @@ export default function StaffCalendarPage() {
         () => {
           console.log('Appointments changed, refreshing...');
           fetchAppointmentsForDate();
+          fetchAllAppointments();
         }
       )
       .subscribe();
@@ -159,6 +162,34 @@ export default function StaffCalendarPage() {
     }
   };
 
+  const fetchAllAppointments = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select(`
+          *,
+          service:service_id (
+            id,
+            title,
+            duration,
+            cost
+          ),
+          branch:branch_id (
+            id,
+            name
+          )
+        `)
+        .eq("staff_id", staffId)
+        .order("date", { ascending: true })
+        .order("start_time", { ascending: true });
+
+      if (error) throw error;
+      setAllAppointments((data || []) as any);
+    } catch (error: any) {
+      console.error("Error fetching all appointments:", error);
+    }
+  };
+
   const fetchAppointmentsForDate = async () => {
     if (!selectedDate) return;
 
@@ -223,6 +254,11 @@ export default function StaffCalendarPage() {
         dateStr >= leave.start_date &&
         dateStr <= leave.end_date
     );
+  };
+
+  const getAppointmentCountForDate = (date: Date) => {
+    const dateStr = format(date, "yyyy-MM-dd");
+    return allAppointments.filter((apt) => apt.date === dateStr).length;
   };
 
   const selectedDateAssignments = selectedDate ? getAssignmentsForDate(selectedDate) : [];
@@ -314,7 +350,7 @@ export default function StaffCalendarPage() {
                 mode="single"
                 selected={selectedDate}
                 onSelect={setSelectedDate}
-                className="rounded-md border"
+                className="rounded-md border pointer-events-auto"
                 modifiers={{
                   assigned: (date) => isDateAssigned(date),
                   onLeave: (date) => isDateOnLeave(date),
@@ -331,6 +367,21 @@ export default function StaffCalendarPage() {
                     fontWeight: "bold",
                   },
                 }}
+                components={{
+                  DayContent: ({ date }) => {
+                    const appointmentCount = getAppointmentCountForDate(date);
+                    return (
+                      <div className="relative w-full h-full flex items-center justify-center">
+                        <span>{date.getDate()}</span>
+                        {appointmentCount > 0 && (
+                          <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] font-bold rounded-full h-4 w-4 flex items-center justify-center">
+                            {appointmentCount}
+                          </span>
+                        )}
+                      </div>
+                    );
+                  },
+                }}
               />
               <div className="mt-4 space-y-2">
                 <div className="flex items-center gap-2 text-sm">
@@ -340,6 +391,10 @@ export default function StaffCalendarPage() {
                 <div className="flex items-center gap-2 text-sm">
                   <div className="w-4 h-4 rounded bg-destructive"></div>
                   <span>On Leave</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <div className="w-4 h-4 rounded-full bg-primary flex items-center justify-center text-[10px] text-primary-foreground font-bold">3</div>
+                  <span>Appointment Count</span>
                 </div>
               </div>
             </CardContent>
