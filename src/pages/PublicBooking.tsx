@@ -436,8 +436,11 @@ export default function PublicBooking() {
     try {
       // Get next 60 days to check
       const today = new Date();
+      today.setHours(0, 0, 0, 0); // Normalize to start of day
       const endDate = addDays(today, 60);
       const datesWithAvailability: Date[] = [];
+
+      console.log('Fetching available dates for branch:', selectedBranch, 'service:', selectedService);
 
       // Fetch branch details
       const { data: branch, error: branchError } = await supabase
@@ -456,11 +459,28 @@ export default function PublicBooking() {
         .gte("date", format(today, "yyyy-MM-dd"))
         .lte("date", format(endDate, "yyyy-MM-dd"));
 
-      // Fetch staff assignments for the date range
+      // Fetch staff qualified for this service
+      const { data: qualifiedStaff } = await supabase
+        .from("staff_services")
+        .select("staff_id")
+        .eq("service_id", selectedService)
+        .eq("branch_id", selectedBranch);
+
+      const qualifiedStaffIds = qualifiedStaff?.map(s => s.staff_id) || [];
+      console.log('Qualified staff for service:', qualifiedStaffIds);
+
+      if (qualifiedStaffIds.length === 0) {
+        console.log('No staff qualified for this service');
+        setAvailableDates([]);
+        return;
+      }
+
+      // Fetch staff assignments for the date range for qualified staff only
       let assignmentsQuery = supabase
         .from("staff_date_assignments")
         .select("date, staff_id")
         .eq("branch_id", selectedBranch)
+        .in("staff_id", qualifiedStaffIds)
         .gte("date", format(today, "yyyy-MM-dd"))
         .lte("date", format(endDate, "yyyy-MM-dd"));
 
@@ -469,6 +489,7 @@ export default function PublicBooking() {
       }
 
       const { data: staffAssignments } = await assignmentsQuery;
+      console.log('Staff assignments found:', staffAssignments?.length);
 
       // Check each date
       for (let d = new Date(today); d <= endDate; d = addDays(d, 1)) {
@@ -483,7 +504,7 @@ export default function PublicBooking() {
 
         // Check if branch is open on this day
         const hours = branch?.open_hours as any;
-        const dayHours = hours[dayOfWeek];
+        const dayHours = hours?.[dayOfWeek];
         const isOpenRegularly = dayHours && dayHours.open && dayHours.close;
         const hasCustomHours = override?.override_type === "custom_hours";
 
@@ -491,13 +512,16 @@ export default function PublicBooking() {
           continue;
         }
 
-        // Check if any staff is assigned
+        // Check if any qualified staff is assigned
         const hasStaffAssigned = staffAssignments?.some(a => a.date === dateStr);
         if (hasStaffAssigned) {
-          datesWithAvailability.push(new Date(d));
+          const normalizedDate = new Date(d);
+          normalizedDate.setHours(0, 0, 0, 0);
+          datesWithAvailability.push(normalizedDate);
         }
       }
 
+      console.log('Available dates found:', datesWithAvailability.length, datesWithAvailability);
       setAvailableDates(datesWithAvailability);
     } catch (error: any) {
       console.error("Error fetching available dates:", error);
@@ -961,11 +985,23 @@ export default function PublicBooking() {
                         mode="single"
                         selected={selectedDate}
                         onSelect={setSelectedDate}
-                        disabled={(date) => date < new Date()}
+                        disabled={(date) => {
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          return date < today;
+                        }}
                         initialFocus
                         className="pointer-events-auto"
                         modifiers={{
-                          available: availableDates,
+                          available: (date) => {
+                            const normalizedDate = new Date(date);
+                            normalizedDate.setHours(0, 0, 0, 0);
+                            return availableDates.some(availDate => {
+                              const normalizedAvail = new Date(availDate);
+                              normalizedAvail.setHours(0, 0, 0, 0);
+                              return normalizedAvail.getTime() === normalizedDate.getTime();
+                            });
+                          }
                         }}
                         modifiersClassNames={{
                           available: "bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-100 font-semibold hover:bg-green-200 dark:hover:bg-green-900/50",
