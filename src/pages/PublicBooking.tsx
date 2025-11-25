@@ -69,6 +69,7 @@ export default function PublicBooking() {
   const [customerEmail, setCustomerEmail] = useState("");
   const [customerPhone, setCustomerPhone] = useState("");
   const [notes, setNotes] = useState("");
+  const [availableDates, setAvailableDates] = useState<Date[]>([]);
   
   const [bookingReference, setBookingReference] = useState("");
 
@@ -88,6 +89,13 @@ export default function PublicBooking() {
       fetchAvailableStaff();
     }
   }, [selectedService, selectedBranch]);
+
+  // Fetch available dates when branch/service/staff are selected
+  useEffect(() => {
+    if (selectedBranch && selectedService && step === 4) {
+      fetchAvailableDates();
+    }
+  }, [selectedBranch, selectedService, selectedStaff, step]);
 
   // Trigger for forcing time slot refresh
   const [refreshTrigger, setRefreshTrigger] = useState(0);
@@ -419,6 +427,80 @@ export default function PublicBooking() {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAvailableDates = async () => {
+    if (!selectedBranch || !selectedService) return;
+
+    try {
+      // Get next 60 days to check
+      const today = new Date();
+      const endDate = addDays(today, 60);
+      const datesWithAvailability: Date[] = [];
+
+      // Fetch branch details
+      const { data: branch, error: branchError } = await supabase
+        .from("branches")
+        .select("open_hours")
+        .eq("id", selectedBranch)
+        .single();
+
+      if (branchError) throw branchError;
+
+      // Fetch branch overrides for the date range
+      const { data: branchOverrides } = await supabase
+        .from("branch_schedule_overrides")
+        .select("*")
+        .eq("branch_id", selectedBranch)
+        .gte("date", format(today, "yyyy-MM-dd"))
+        .lte("date", format(endDate, "yyyy-MM-dd"));
+
+      // Fetch staff assignments for the date range
+      let assignmentsQuery = supabase
+        .from("staff_date_assignments")
+        .select("date, staff_id")
+        .eq("branch_id", selectedBranch)
+        .gte("date", format(today, "yyyy-MM-dd"))
+        .lte("date", format(endDate, "yyyy-MM-dd"));
+
+      if (selectedStaff) {
+        assignmentsQuery = assignmentsQuery.eq("staff_id", selectedStaff);
+      }
+
+      const { data: staffAssignments } = await assignmentsQuery;
+
+      // Check each date
+      for (let d = new Date(today); d <= endDate; d = addDays(d, 1)) {
+        const dateStr = format(d, "yyyy-MM-dd");
+        const dayOfWeek = format(d, "EEEE").toLowerCase();
+
+        // Check if branch is closed
+        const override = branchOverrides?.find(o => o.date === dateStr);
+        if (override?.override_type === "closed") {
+          continue;
+        }
+
+        // Check if branch is open on this day
+        const hours = branch?.open_hours as any;
+        const dayHours = hours[dayOfWeek];
+        const isOpenRegularly = dayHours && dayHours.open && dayHours.close;
+        const hasCustomHours = override?.override_type === "custom_hours";
+
+        if (!isOpenRegularly && !hasCustomHours) {
+          continue;
+        }
+
+        // Check if any staff is assigned
+        const hasStaffAssigned = staffAssignments?.some(a => a.date === dateStr);
+        if (hasStaffAssigned) {
+          datesWithAvailability.push(new Date(d));
+        }
+      }
+
+      setAvailableDates(datesWithAvailability);
+    } catch (error: any) {
+      console.error("Error fetching available dates:", error);
     }
   };
 
@@ -882,6 +964,12 @@ export default function PublicBooking() {
                         disabled={(date) => date < new Date()}
                         initialFocus
                         className="pointer-events-auto"
+                        modifiers={{
+                          available: availableDates,
+                        }}
+                        modifiersClassNames={{
+                          available: "bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-100 font-semibold hover:bg-green-200 dark:hover:bg-green-900/50",
+                        }}
                       />
                     </PopoverContent>
                   </Popover>
