@@ -101,10 +101,10 @@ export default function PublicBooking() {
         {
           event: '*',
           schema: 'public',
-          table: 'branches',
-          filter: 'status=eq.active'
+          table: 'branches'
         },
-        () => {
+        (payload) => {
+          console.log('Branch change detected:', payload);
           // Refresh branches list when any branch changes
           fetchBranches();
         }
