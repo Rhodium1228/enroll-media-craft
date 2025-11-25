@@ -334,6 +334,7 @@ export const BranchEnrolmentWizard = ({ onClose }: BranchEnrolmentWizardProps) =
           hero_image_url: heroUrl,
           gallery: galleryUrls,
           compliance_docs: complianceUrls,
+          status: 'active',
           created_by: user.id,
         })
         .select()

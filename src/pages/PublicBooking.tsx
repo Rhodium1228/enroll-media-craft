@@ -199,8 +199,10 @@ export default function PublicBooking() {
         .eq("status", "active");
 
       if (error) throw error;
+      console.log('Fetched branches:', data);
       setBranches(data || []);
     } catch (error: any) {
+      console.error('Error fetching branches:', error);
       toast({
         title: "Error",
         description: "Failed to load branches",
