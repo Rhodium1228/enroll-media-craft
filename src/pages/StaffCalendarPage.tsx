@@ -61,6 +61,47 @@ export default function StaffCalendarPage() {
       fetchAssignments();
       fetchLeaveRequests();
     }
+
+    // Real-time subscription for appointments changes
+    const appointmentsChannel = supabase
+      .channel('staff-appointments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'appointments',
+          filter: `staff_id=eq.${staffId}`
+        },
+        () => {
+          console.log('Appointments changed, refreshing...');
+          fetchAppointmentsForDate();
+        }
+      )
+      .subscribe();
+
+    // Real-time subscription for assignments changes
+    const assignmentsChannel = supabase
+      .channel('staff-assignments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_date_assignments',
+          filter: `staff_id=eq.${staffId}`
+        },
+        () => {
+          console.log('Assignments changed, refreshing...');
+          fetchAssignments();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(appointmentsChannel);
+      supabase.removeChannel(assignmentsChannel);
+    };
   }, [staffId]);
 
   useEffect(() => {
