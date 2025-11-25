@@ -13,6 +13,8 @@ import { BranchDateOverride } from "@/components/branch/BranchDateOverride";
 import { BranchOverrideList } from "@/components/branch/BranchOverrideList";
 import { BranchHoursCalendar } from "@/components/branch/BranchHoursCalendar";
 import { BranchStaffScheduleCalendar } from "@/components/branch/BranchStaffScheduleCalendar";
+import BranchCustomers from "@/components/branch/BranchCustomers";
+import BranchAppointments from "@/components/branch/BranchAppointments";
 
 interface Branch {
   id: string;
@@ -190,10 +192,12 @@ export default function BranchDetail() {
         </div>
 
         <Tabs defaultValue="overview" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
             <TabsTrigger value="overview" className="text-xs sm:text-sm">Overview</TabsTrigger>
             <TabsTrigger value="services" className="text-xs sm:text-sm">Services ({services.length})</TabsTrigger>
             <TabsTrigger value="staff" className="text-xs sm:text-sm">Staff</TabsTrigger>
+            <TabsTrigger value="customers" className="text-xs sm:text-sm">Customers</TabsTrigger>
+            <TabsTrigger value="appointments" className="text-xs sm:text-sm">Appointments</TabsTrigger>
             <TabsTrigger value="schedule" className="text-xs sm:text-sm">Schedule</TabsTrigger>
           </TabsList>
 
@@ -315,6 +319,14 @@ export default function BranchDetail() {
 
           <TabsContent value="staff" className="mt-6">
             <StaffList branchId={branchId!} />
+          </TabsContent>
+
+          <TabsContent value="customers" className="mt-6">
+            <BranchCustomers branchId={branchId!} />
+          </TabsContent>
+
+          <TabsContent value="appointments" className="mt-6">
+            <BranchAppointments branchId={branchId!} />
           </TabsContent>
 
           <TabsContent value="schedule" className="mt-6">
