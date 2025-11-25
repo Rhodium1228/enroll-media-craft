@@ -20,11 +20,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { detectDateAssignmentConflicts, formatConflictMessage } from "@/lib/dateAssignmentUtils";
 import type { TimeSlot as StaffTimeSlot } from "@/lib/dateAssignmentUtils";
+import { DateStaffAssignmentForm } from "./DateStaffAssignmentForm";
 
 interface BranchOverride {
   id: string;
@@ -91,6 +99,10 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
     timeSlots: StaffTimeSlot[];
     reason?: string;
   } | null>(null);
+
+  // Quick action dialog state
+  const [showQuickActionDialog, setShowQuickActionDialog] = useState(false);
+  const [quickActionMode, setQuickActionMode] = useState<"staff" | "hours" | null>(null);
 
   useEffect(() => {
     fetchOverrides();
@@ -266,22 +278,10 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
       return;
     }
 
-    // Single select mode
-    if (isSameDay(date, selectedDate || new Date("1900-01-01"))) {
-      // Clicking same date - toggle edit mode
-      if (isEditing) {
-        setIsEditing(false);
-        resetForm();
-      } else {
-        setIsEditing(true);
-        loadOverrideIntoForm(getOverrideForDate(date));
-      }
-    } else {
-      // Clicking different date
-      setSelectedDate(date);
-      setIsEditing(true);
-      loadOverrideIntoForm(getOverrideForDate(date));
-    }
+    // Single select mode - open quick action dialog
+    setSelectedDate(date);
+    setQuickActionMode(null);
+    setShowQuickActionDialog(true);
   };
 
   const toggleMultiSelectMode = () => {
@@ -543,6 +543,14 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
       return;
     }
 
+    // Validate time slots
+    for (const slot of staffTimeSlots) {
+      if (slot.start >= slot.end) {
+        toast.error("End time must be after start time");
+        return;
+      }
+    }
+
     // Check for conflicts
     const conflicts = await checkStaffConflicts(selectedStaffId, selectedDate, staffTimeSlots);
 
@@ -555,6 +563,35 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
     }
 
     await saveStaffAssignment(selectedStaffId, selectedDate, staffTimeSlots, staffReason);
+  };
+
+  const handleQuickAssignStaff = async (staffId: string, timeSlots: StaffTimeSlot[], reason?: string) => {
+    setSelectedStaffId(staffId);
+    setStaffTimeSlots(timeSlots);
+    setStaffReason(reason || "");
+    
+    // Validate time slots
+    for (const slot of timeSlots) {
+      if (slot.start >= slot.end) {
+        toast.error("End time must be after start time");
+        return;
+      }
+    }
+
+    if (!selectedDate) return;
+
+    // Check for conflicts
+    const conflicts = await checkStaffConflicts(staffId, selectedDate, timeSlots);
+
+    if (conflicts.length > 0) {
+      const conflictMsg = formatConflictMessage(conflicts);
+      setConflictWarning(conflictMsg);
+      setPendingStaffAssignment({ staffId, timeSlots, reason });
+      setShowConflictDialog(true);
+      return;
+    }
+
+    await saveStaffAssignment(staffId, selectedDate, timeSlots, reason);
   };
 
   const saveStaffAssignment = async (staffId: string, date: Date, timeSlots: StaffTimeSlot[], reason?: string) => {
@@ -572,6 +609,7 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
       toast.success("Staff assigned successfully");
       await fetchStaffAssignments();
       setShowStaffForm(false);
+      setShowQuickActionDialog(false);
       resetStaffForm();
     } catch (error: any) {
       console.error("Error assigning staff:", error);
@@ -1313,6 +1351,241 @@ export function BranchHoursCalendar({ branchId, refreshTrigger }: BranchHoursCal
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
+
+        {/* Quick Action Dialog */}
+        <Dialog open={showQuickActionDialog} onOpenChange={setShowQuickActionDialog}>
+          <DialogContent className="max-w-[95vw] sm:max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>
+                {selectedDate && format(selectedDate, "EEEE, MMMM d, yyyy")}
+              </DialogTitle>
+              <DialogDescription>
+                {(() => {
+                  if (!selectedDate) return null;
+                  const dateStr = format(selectedDate, "yyyy-MM-dd");
+                  const assignedCount = staffAssignments.filter(a => a.date === dateStr).length;
+                  const override = getOverrideForDate(selectedDate);
+                  
+                  return (
+                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                      {override && (
+                        <Badge variant={override.override_type === "closed" ? "destructive" : "secondary"}>
+                          {override.override_type === "closed" ? "🔴 Closed" : "🟡 Custom Hours"}
+                        </Badge>
+                      )}
+                      {assignedCount > 0 && (
+                        <Badge variant="outline">
+                          <Users className="h-3 w-3 mr-1" />
+                          {assignedCount} staff assigned
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })()}
+              </DialogDescription>
+            </DialogHeader>
+
+            {quickActionMode === null && (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+                <Button
+                  variant="outline"
+                  className="h-24 flex-col gap-2"
+                  onClick={() => setQuickActionMode("staff")}
+                >
+                  <Users className="h-8 w-8" />
+                  <span>Assign Staff</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 flex-col gap-2"
+                  onClick={() => {
+                    setQuickActionMode("hours");
+                    setIsEditing(true);
+                    loadOverrideIntoForm(selectedDate ? getOverrideForDate(selectedDate) : undefined);
+                  }}
+                >
+                  <CalendarIcon className="h-8 w-8" />
+                  <span>Set Branch Hours</span>
+                </Button>
+              </div>
+            )}
+
+            {quickActionMode === "staff" && selectedDate && (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Assign Staff to This Date</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuickActionMode(null)}
+                  >
+                    Back
+                  </Button>
+                </div>
+
+                {(() => {
+                  const dateStr = format(selectedDate, "yyyy-MM-dd");
+                  const currentAssignments = staffAssignments.filter(a => a.date === dateStr);
+
+                  return (
+                    <>
+                      {currentAssignments.length > 0 && (
+                        <div className="space-y-2">
+                          <Label className="text-sm font-medium">Currently Assigned:</Label>
+                          {currentAssignments.map((assignment) => (
+                            <Card key={assignment.id} className="p-3">
+                              <div className="flex justify-between items-start gap-3">
+                                <div className="space-y-1 flex-1">
+                                  <p className="font-medium text-sm">
+                                    {assignment.staff.first_name} {assignment.staff.last_name}
+                                  </p>
+                                  <div className="space-y-1">
+                                    {assignment.time_slots.map((slot: StaffTimeSlot, idx: number) => (
+                                      <p key={idx} className="text-xs text-muted-foreground">
+                                        {slot.start} - {slot.end}
+                                      </p>
+                                    ))}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteStaffAssignment(assignment.id)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </Card>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="border-t pt-4">
+                        <Label className="text-sm font-medium mb-3 block">Add New Assignment:</Label>
+                        <DateStaffAssignmentForm
+                          availableStaff={availableStaff}
+                          onSubmit={handleQuickAssignStaff}
+                          onCancel={() => setShowQuickActionDialog(false)}
+                          isLoading={false}
+                        />
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+            )}
+
+            {quickActionMode === "hours" && selectedDate && isEditing && (
+              <div className="space-y-4 py-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="font-semibold">Set Branch Hours</h4>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setQuickActionMode(null)}
+                  >
+                    Back
+                  </Button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label>Override Type</Label>
+                    <RadioGroup value={overrideType} onValueChange={setOverrideType}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="closed" id="dialog-closed" />
+                        <Label htmlFor="dialog-closed" className="font-normal cursor-pointer">
+                          🔴 Closed - Branch closed for this date
+                        </Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="custom_hours" id="dialog-custom" />
+                        <Label htmlFor="dialog-custom" className="font-normal cursor-pointer">
+                          🟡 Custom Hours - Different hours than regular schedule
+                        </Label>
+                      </div>
+                    </RadioGroup>
+                  </div>
+
+                  {overrideType === "custom_hours" && (
+                    <div className="space-y-3">
+                      <Label>Time Slots</Label>
+                      {timeSlots.map((slot, index) => (
+                        <div key={index} className="flex items-center gap-2">
+                          <Input
+                            type="time"
+                            value={slot.open}
+                            onChange={(e) => updateTimeSlot(index, "open", e.target.value)}
+                            className="flex-1"
+                          />
+                          <span className="text-muted-foreground text-sm">to</span>
+                          <Input
+                            type="time"
+                            value={slot.close}
+                            onChange={(e) => updateTimeSlot(index, "close", e.target.value)}
+                            className="flex-1"
+                          />
+                          {timeSlots.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => removeTimeSlot(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={addTimeSlot}
+                      >
+                        <Plus className="h-3 w-3 mr-1" />
+                        Add Time Slot
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="space-y-2">
+                    <Label htmlFor="dialog-reason">Reason (Optional)</Label>
+                    <Textarea
+                      id="dialog-reason"
+                      value={reason}
+                      onChange={(e) => setReason(e.target.value)}
+                      placeholder="e.g., Christmas Holiday, Special Event"
+                      rows={2}
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowQuickActionDialog(false);
+                        resetForm();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      onClick={async () => {
+                        await handleSave();
+                        setShowQuickActionDialog(false);
+                      }}
+                      disabled={isSaving}
+                    >
+                      <Save className="h-3 w-3 mr-1" />
+                      {isSaving ? "Saving..." : "Save"}
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </CardContent>
     </Card>
   );
