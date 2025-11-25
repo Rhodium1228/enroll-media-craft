@@ -90,19 +90,27 @@ export default function PublicBooking() {
     }
   }, [selectedService, selectedBranch]);
 
-  // Fetch available dates when branch/service/staff are selected
+  // Fetch available dates when branch/service are selected
   useEffect(() => {
-    if (selectedBranch && selectedService && step === 4) {
+    if (selectedBranch && selectedService) {
       fetchAvailableDates();
     }
-  }, [selectedBranch, selectedService, selectedStaff, step]);
+  }, [selectedBranch, selectedService, selectedStaff]);
+
+  // Refetch staff when date changes to filter by date availability
+  useEffect(() => {
+    if (selectedDate && selectedBranch && selectedService) {
+      fetchAvailableStaff();
+    }
+  }, [selectedDate]);
 
   // Trigger for forcing time slot refresh
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
-  // Real-time subscription for branch changes
+  // Real-time subscriptions for all relevant tables
   useEffect(() => {
-    const channel = supabase
+    // Subscribe to branches changes
+    const branchesChannel = supabase
       .channel('public-branches-changes')
       .on(
         'postgres_changes',
@@ -113,84 +121,109 @@ export default function PublicBooking() {
         },
         (payload) => {
           console.log('Branch change detected:', payload);
-          // Refresh branches list when any branch changes
           fetchBranches();
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
-
-  // Real-time subscription for services changes
-  useEffect(() => {
-    if (!selectedBranch) return;
-
-    const channel = supabase
+    // Subscribe to services changes
+    const servicesChannel = supabase
       .channel('public-services-changes')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'services',
-          filter: `branch_id=eq.${selectedBranch}`
+          table: 'services'
         },
         () => {
-          // Refresh services list when any service changes
-          fetchServices();
+          if (selectedBranch) {
+            fetchServices();
+          }
         }
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [selectedBranch]);
+    // Subscribe to staff_services changes
+    const staffServicesChannel = supabase
+      .channel('staff-services-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_services'
+        },
+        () => {
+          if (selectedBranch && selectedService) {
+            fetchAvailableStaff();
+            fetchAvailableDates();
+          }
+        }
+      )
+      .subscribe();
 
-  // Real-time subscription for appointment changes
-  useEffect(() => {
-    if (!selectedBranch || !selectedDate) return;
+    // Subscribe to staff_date_assignments changes
+    const staffAssignmentsChannel = supabase
+      .channel('staff-assignments-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_date_assignments'
+        },
+        () => {
+          if (selectedBranch && selectedService) {
+            fetchAvailableDates();
+            if (selectedDate) {
+              fetchAvailableStaff();
+            }
+          }
+        }
+      )
+      .subscribe();
 
-    const dateStr = format(selectedDate, "yyyy-MM-dd");
-
-    const channel = supabase
+    // Subscribe to appointments changes
+    const appointmentsChannel = supabase
       .channel('appointments-realtime')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'appointments',
-          filter: `branch_id=eq.${selectedBranch}`,
+          table: 'appointments'
         },
         (payload) => {
           console.log('Appointment change detected:', payload);
           
-          // Check if the change affects the currently selected date
           const newRecord = payload.new as any;
           const oldRecord = payload.old as any;
           const appointmentDate = newRecord?.date || oldRecord?.date;
+          const appointmentBranch = newRecord?.branch_id || oldRecord?.branch_id;
           
-          if (appointmentDate === dateStr) {
-            toast({
-              title: "Availability Updated",
-              description: "Time slots have been updated. Please review available times.",
-            });
-            
-            // Trigger time slots refresh
-            setRefreshTrigger(prev => prev + 1);
+          if (appointmentBranch === selectedBranch && selectedDate) {
+            const dateStr = format(selectedDate, "yyyy-MM-dd");
+            if (appointmentDate === dateStr) {
+              toast({
+                title: "Availability Updated",
+                description: "Time slots have been updated. Please review available times.",
+              });
+              setRefreshTrigger(prev => prev + 1);
+            }
           }
         }
       )
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      supabase.removeChannel(branchesChannel);
+      supabase.removeChannel(servicesChannel);
+      supabase.removeChannel(staffServicesChannel);
+      supabase.removeChannel(staffAssignmentsChannel);
+      supabase.removeChannel(appointmentsChannel);
     };
-  }, [selectedBranch, selectedDate]);
+  }, [selectedBranch, selectedDate, selectedService]);
 
   // Generate time slots when date, branch, service, and optionally staff are selected
   useEffect(() => {
@@ -413,9 +446,22 @@ export default function PublicBooking() {
       if (error) throw error;
       
       // Extract and filter active staff
-      const staff = data
+      let staff = data
         ?.map((item: any) => item.staff)
         .filter((s: any) => s && s.status === 'active') || [];
+      
+      // If a date is selected, further filter by staff assigned on that date
+      if (selectedDate) {
+        const dateStr = format(selectedDate, "yyyy-MM-dd");
+        const { data: assignments } = await supabase
+          .from("staff_date_assignments")
+          .select("staff_id")
+          .eq("branch_id", selectedBranch)
+          .eq("date", dateStr);
+
+        const assignedStaffIds = new Set(assignments?.map(a => a.staff_id) || []);
+        staff = staff.filter((s: any) => assignedStaffIds.has(s.id));
+      }
       
       setAvailableStaff(staff);
     } catch (error: any) {
